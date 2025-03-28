@@ -1,7 +1,8 @@
 ﻿
 using System.Reflection;
 
-namespace lb_4;
+
+namespace lb_5;
 
 
 class Product
@@ -73,7 +74,7 @@ class RealEstate : Product
 
     public override string ToString()
     {
-        return $"{Name}, Price: {Price}, Location: {Location}";
+        return $"{base.ToString()}, Location: {Location}, Size: {Size}, Type: {Type}";
     }
 }
 
@@ -118,7 +119,7 @@ class RealEstateInvestment : Product
 
     public override string ToString()
     {
-        return $"{Name}, Location: {Location}, Value: {MarketValue}, Invenstment type: {InvestmentType}";
+        return $"{base.ToString()}, Location: {Location}, Market Value: {MarketValue}, Invenstment Type: {InvestmentType}";
     }
 }
 
@@ -154,7 +155,7 @@ class Apartment : RealEstate
 
     public override string ToString()
     {
-        return $"{Name}, in {FloorNumber} floor, Homeowners Association fee: {HOAFees}";
+        return $"{base.ToString()}, In {FloorNumber} Floor, Homeowners Association Fee: {HOAFees}";
     }
 }
 
@@ -186,7 +187,7 @@ class House : RealEstate
 
     public override string ToString()
     {
-        return $"{Name}, garden size {GardenSize}, {(Pool ? "there is" : "no")} pool";
+        return $"{base.ToString()}, Garden Size: {GardenSize}, {(Pool ? "There is" : "No")} Pool";
     }
 }
 
@@ -221,7 +222,7 @@ class Hotel : RealEstateInvestment
 
     public override string ToString()
     {
-        return $"{Name}, there are {Rooms} rooms, Hotel rating {StarRating}";
+        return $"{base.ToString()}, There are {Rooms} Rooms, Hotel Rating: {StarRating}";
     }
 }
 
@@ -251,7 +252,7 @@ class LandPlot : RealEstateInvestment
 
     public override string ToString()
     {
-        return $"{Name}, Soil type {SoilType}, {(InfrastructureAccess ? "have" : "no")} access to infrastructure";
+        return $"{base.ToString()}, Soil Type: {SoilType}, {(InfrastructureAccess ? "Have" : "No")} Access to Infrastructure";
     }
 }
 
@@ -264,17 +265,22 @@ class ValueLessThanZero : Exception
 }
 
 
+
 class Container
 {
     private Object[] items;
+    private int[] insertionOrder;
     private int count;
     private int size;
+    private int nextInsertionId;
 
     public Container()
     {
         items = new Object[1];
+        insertionOrder = new int[1];
         count = 0;
         size = 1;
+        nextInsertionId = 0;
     }
 
     public void Add(object _newObject)
@@ -282,29 +288,34 @@ class Container
         if (count == size)
         {
             Object[] newArray = new Object[size * 2];
+            int[] newInsertionOrder = new int[size * 2];
             for (int i = 0; i < size; i++)
             {
                 newArray[i] = items[i];
+                newInsertionOrder[i] = insertionOrder[i];
             }
             items = newArray;
+            insertionOrder = newInsertionOrder;
             size *= 2;
         }
         items[count] = _newObject;
+        insertionOrder[count] = nextInsertionId++;
         count++;
     }
 
-    public object RemoveByIndex(int _index)
+    public object RemoveById(int _index)
     {
-        if (_index >= count || _index < 0)
+        if (_index < 0 || _index > count)
             throw new IndexOutOfRangeException();
 
         object deletedObject = items[_index];
-
-        for (int i = _index; i < count; i++)
+        for (int i = _index; i < count - 1; i++)
         {
             items[i] = items[i + 1];
+            insertionOrder[i] = insertionOrder[i + 1];
         }
         items[count - 1] = null;
+        insertionOrder[count - 1] = 0;
         count--;
 
         return deletedObject;
@@ -319,7 +330,10 @@ class Container
                 for (int j = 0; j < count - i - 1; j++)
                 {
                     if (GetPropertyValue<decimal>(items[j], "Price") > GetPropertyValue<decimal>(items[j + 1], "Price"))
+                    { 
                         (items[j], items[j + 1]) = (items[j + 1], items[j]);
+                        (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
+                    }
                 }
             }
         }
@@ -341,7 +355,7 @@ class Container
             return (T)property.GetValue(item);
         }
         return default;
-    }
+    } 
 
     public string ToString()
     {
@@ -364,8 +378,45 @@ class Container
     {
         return count;
     }
-}
 
+    public Object[] GetItemsByParameter<T>(string param, T i)
+    {
+        Object[] _items = new Object[count];
+        int index = 0;
+        foreach (var item in items)
+        {
+            if (item != null)
+            {
+                var value = GetPropertyValue<T>(item, param);
+                if (value != null && value.Equals(i))
+                { 
+                    _items[index] = item;
+                    index++;
+                }
+            }
+        }
+        return index == 0 ? default : _items;
+    }
+
+    public Object this[int i]
+    {
+        get
+        {
+            if (i < 0) throw new IndexOutOfRangeException();
+            if (i > nextInsertionId) throw new IndexOutOfRangeException($"There is no entry number {i}");
+
+            for (int j = 0; j < count; j++)
+                if (insertionOrder[j] == i)
+                    return items[j];
+
+            return null;
+        }
+    }
+
+    public Object[] this[string i] => GetItemsByParameter("Name", i);
+    public Object[] this[decimal i] => GetItemsByParameter("Price", i);
+
+}
 
 
 class Program
@@ -384,10 +435,16 @@ class Program
             Console.WriteLine("2. Manual Input");
             Console.WriteLine("3. Show Container");
             Console.ForegroundColor = ConsoleColor.White;
-             Console.WriteLine("#. --- ### ### ### ---");
+            Console.WriteLine("#. --- ### ### ### ---");
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("4. Sort Container by Price");
-            Console.WriteLine("5. Remove Element by Index");
+            Console.WriteLine("4. Get Element by Order of Addition");
+            Console.WriteLine("5. Get Element by Name");
+            Console.WriteLine("6. Get Elements by Price");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("#. --- ### ### ### ---");
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("7. Sort Container by Price");
+            Console.WriteLine("8. Remove Element by ID (1st - based)");
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("#. --- ### ### ### ---");
             Console.ForegroundColor = ConsoleColor.Cyan;
@@ -396,9 +453,9 @@ class Program
             Console.Write("Enter your choice: ");
             Console.ResetColor();
 
-            string choice = Console.ReadLine()?.ToLower();
+            string choice = Console.ReadLine()?.ToLower(); 
 
-            try
+            try 
             {
                 switch (choice)
                 {
@@ -413,6 +470,7 @@ class Program
                             Console.ForegroundColor = ConsoleColor.Green;
                             Console.WriteLine($"\nAutomatic generation of {count} elements complete.");
                             Console.ResetColor();
+                            DemonstrateIndexers(container, random);
                         }
                         else
                         {
@@ -437,6 +495,18 @@ class Program
                         break;
 
                     case "4":
+                        GetElementByOrderOfAddition(container);
+                        break;
+
+                    case "5":
+                        GetElementByName(container);
+                        break;
+
+                    case "6":
+                        GetElementsByPrice(container);
+                        break;
+
+                    case "7":
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("\n--- Sorting Container by Price ---");
                         Console.ResetColor();
@@ -444,7 +514,7 @@ class Program
                         {
                             container.Sort();
                             Console.WriteLine("Container sorted.");
-                            ShowContainer(container);
+                            ShowContainer(container); 
                         }
                         else
                         {
@@ -452,17 +522,8 @@ class Program
                         }
                         break;
 
-                    case "5":
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("\n--- Remove Element by Index ---");
-                        Console.ForegroundColor = ConsoleColor.Cyan;
-                        Console.WriteLine("Enter element index to remove: ");
-                        Console.ResetColor();
-                        int index = Int32.Parse(Console.ReadLine());
-                        object deletedItem = container.RemoveByIndex(index);
-                        Console.ForegroundColor = ConsoleColor.DarkCyan;
-                        Console.WriteLine($"Element '{deletedItem.ToString()}' was removed");
-                        Console.ResetColor();
+                    case "8":
+                        RemoveElementByIndex(container);
                         break;
 
                     case "q":
@@ -496,7 +557,7 @@ class Program
                 Console.WriteLine($"\nError: {ex.Message}");
                 Console.ResetColor();
             }
-            catch (Exception ex)
+            catch (Exception ex) 
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"\nAn unexpected error occurred: {ex.Message}");
@@ -506,6 +567,188 @@ class Program
             {
                 Console.ResetColor();
             }
+        }
+    }
+
+    // --- Indexer Interaction Methods ---
+
+    static void GetElementByOrderOfAddition(Container container)
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n--- Get Element by Order of Addition ---");
+        Console.ResetColor();
+        if (container.GetCount() == 0)
+        {
+            Console.WriteLine("Container is empty. Cannot get element by id.");
+            return;
+        }
+
+        Console.Write($"Enter index (1 to {container.GetCount()}): ");
+        if (int.TryParse(Console.ReadLine(), out int index))
+        {
+            try
+            {
+                object item = container[index - 1];
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"Element at index {index}:");
+                Console.ResetColor();
+                Console.WriteLine(item?.ToString() ?? "Item not found (should not happen with valid index).");
+            }
+            catch (IndexOutOfRangeException)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error: Index {index} is out of range.");
+                Console.ResetColor();
+            }
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Invalid input. Please enter a valid integer index.");
+            Console.ResetColor();
+        }
+    }
+
+    static void GetElementByName(Container container)
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n--- Get Element by Name ---");
+        Console.ResetColor();
+        if (container.GetCount() == 0)
+        {
+            Console.WriteLine("Container is empty. Cannot get element by name.");
+            return;
+        }
+
+        Console.Write("Enter the Name to search for: ");
+        string name = Console.ReadLine();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Invalid input. Name cannot be empty.");
+            Console.ResetColor();
+            return;
+        }
+
+        Object[] items = container[name];
+
+        if (items != null)
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"Element with Name '{name}':");
+            Console.ResetColor();
+            Console.ResetColor();
+
+            int foundCount = 0;
+            foreach (var item in items)
+            {
+                if (item != null)
+                {
+                    Console.WriteLine($"- {item.ToString()}");
+                    foundCount++;
+                }
+            }
+            if (foundCount == 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"No elements found with Price '{name}'.");
+                Console.ResetColor();
+            }
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"No element found with Name '{name}'.");
+            Console.ResetColor();
+        }
+    }
+
+    static void GetElementsByPrice(Container container)
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n--- Get Elements by Price ---");
+        Console.ResetColor();
+        if (container.GetCount() == 0)
+        {
+            Console.WriteLine("Container is empty. Cannot get elements by price.");
+            return;
+        }
+
+        Console.Write("Enter the Price to search for: ");
+        if (decimal.TryParse(Console.ReadLine(), out decimal price))
+        {
+            Object[] items = container[price];
+
+            if (items != null)
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"Elements with Price '{price}':");
+                Console.ResetColor();
+                int foundCount = 0;
+                foreach (var item in items)
+                {
+                    if (item != null)
+                    {
+                        Console.WriteLine($"- {item.ToString()}");
+                        foundCount++;
+                    }
+                }
+                if (foundCount == 0) 
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"No elements found with Price '{price}'.");
+                    Console.ResetColor();
+                }
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"No elements found with Price '{price}'.");
+                Console.ResetColor();
+            }
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Invalid input. Please enter a valid decimal price.");
+            Console.ResetColor();
+        }
+    }
+
+    static void RemoveElementByIndex(Container container)
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n--- Remove Element by 1-based ID ---");
+        Console.ResetColor();
+        if (container.GetCount() == 0)
+        {
+            Console.WriteLine("Container is empty. Nothing to remove.");
+            return;
+        }
+        Console.Write($"Enter element ID to remove (1 to {container.GetCount()}): ");
+        if (int.TryParse(Console.ReadLine(), out int id) && id >= 1 && id <= container.GetCount())
+        {
+            int index = id - 1; 
+            try
+            {
+                object deletedItem = container.RemoveById(index);
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                Console.WriteLine($"Element '{deletedItem.ToString()}' (ID: {id}) was removed.");
+                Console.ResetColor();
+            }
+            catch (IndexOutOfRangeException) 
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error: ID {id} is invalid.");
+                Console.ResetColor();
+            }
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Invalid input. Please enter a valid ID between 1 and {container.GetCount()}.");
+            Console.ResetColor();
         }
     }
 
@@ -542,6 +785,135 @@ class Program
         Console.WriteLine(); // New line after progress dots
     }
 
+    static void DemonstrateIndexers(Container container, Random random)
+    {
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("\n--- Demonstrating Indexer Usage ---");
+        Console.ResetColor();
+
+        int currentCount = container.GetCount();
+        if (currentCount == 0)
+        {
+            Console.WriteLine("Container is empty, cannot demonstrate indexers.");
+            return;
+        }
+
+        int demoIndex = random.Next(currentCount);
+        try
+        {
+            object itemByIndex = container[demoIndex];
+            Console.WriteLine($"1. Using int indexer container[{demoIndex}]:");
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"   Found: {itemByIndex?.ToString() ?? "N/A"}");
+            Console.ResetColor();
+        }
+        catch (Exception ex) // Should not happen if index is valid
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"   Error getting item by index {demoIndex}: {ex.Message}");
+            Console.ResetColor();
+        }
+
+
+        string demoName = null;
+        object sourceItemForName = null;
+        for (int attempt = 0; attempt < Math.Min(5, currentCount); ++attempt)
+        {
+            int nameSearchIndex = random.Next(currentCount);
+            sourceItemForName = container[nameSearchIndex];
+            demoName = GetPropertyValue<string>(sourceItemForName, "Name");
+            if (!string.IsNullOrEmpty(demoName)) break;
+        }
+
+        Console.WriteLine($"\n2. Using string indexer container[\"{demoName ?? "N/A"}\"]:");
+        if (!string.IsNullOrEmpty(demoName))
+        {
+            try
+            {
+                object itemByName = container[demoName];
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"   Found: {itemByName?.ToString() ?? "Not Found"}");
+                if (itemByName != sourceItemForName)
+                    Console.WriteLine($"   (Note: Found item might differ from the source if names are duplicated)");
+                Console.ResetColor();
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"   Error getting item by name '{demoName}': {ex.Message}");
+                Console.ResetColor();
+            }
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("   Could not find an item with a non-empty name in random sampling to demonstrate.");
+            Console.ResetColor();
+        }
+
+
+        decimal demoPrice = -1m;
+        for (int attempt = 0; attempt < Math.Min(5, currentCount); ++attempt)
+        {
+            int priceSearchIndex = random.Next(currentCount);
+            object sourceItemForPrice = container[priceSearchIndex];
+            demoPrice = GetPropertyValue<decimal>(sourceItemForPrice, "Price");
+            if (demoPrice > 0) break; // Found a valid price
+            else demoPrice = -1m; // Reset if price was 0 or invalid
+        }
+
+        Console.WriteLine($"\n3. Using decimal indexer container[{demoPrice}]:");
+        if (demoPrice > 0)
+        {
+            try
+            {
+                Object[] itemsByPrice = container[demoPrice];
+                if (itemsByPrice != null)
+                {
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine($"   Found items with price {demoPrice}:");
+                    int foundCount = 0;
+                    foreach (var item in itemsByPrice)
+                    {
+                        if (item != null)
+                        {
+                            Console.WriteLine($"   - {item.ToString()}");
+                            foundCount++;
+                        }
+                    }
+                    if (foundCount == 0) // Should not happen if itemsByPrice != null
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"   No items found for price {demoPrice} (indexer returned non-null but empty?).");
+                    }
+                    Console.ResetColor();
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"   No items found for price {demoPrice}.");
+                    Console.ResetColor();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"   Error getting items by price {demoPrice}: {ex.Message}");
+                Console.ResetColor();
+            }
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("   Could not find an item with a positive price in random sampling to demonstrate.");
+            Console.ResetColor();
+        }
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("--- End Indexer Demonstration ---");
+        Console.ResetColor();
+    }
+
+
     // --- Manual Input ---
     static void ManualInput(Container container)
     {
@@ -559,8 +931,7 @@ class Program
         string classChoice = Console.ReadLine();
 
         object newItem = null;
-        try
-        {
+        try { 
             switch (classChoice)
             {
                 case "1": newItem = CreateManualProduct(); break;
@@ -574,7 +945,7 @@ class Program
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Invalid class choice.");
                     Console.ResetColor();
-                    return;
+                    return; 
             }
         }
         catch (ValueLessThanZero ex)
@@ -641,7 +1012,7 @@ class Program
 
             for (int i = startIdx; i < endIdx; i++)
             {
-                var item = items[i]; // Using the indexer here!
+                var item =  items[i]; // Using the indexer here!
                 if (item == null) continue; // Should not happen if index is valid
 
                 WriteDataRow(i + 1, item); // Pass 1-based ID
@@ -697,13 +1068,11 @@ class Program
 
     static void WriteDataRow(int id, object item)
     {
-        // Helper to format nullable decimals/doubles - These remain unchanged
         string FormatDecimal(decimal? d) => d?.ToString("N2") ?? "";
         string FormatDouble(double? d) => d?.ToString("N1") ?? "";
         string FormatBool(bool? b) => b.HasValue ? (b.Value ? "Yes" : "No") : "";
         string FormatInt(int? i) => i?.ToString() ?? "";
 
-        // --- Get Values Safely ---
 
         Type itemType = item.GetType(); // Get type once for efficiency
 
