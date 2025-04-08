@@ -1,11 +1,11 @@
-﻿
+﻿using lb_7.Interfaces;
 using System.Reflection;
 
 namespace lb_7
 {
     class Container
     {
-        private Object[] items;
+        private IName[] items;
         private int[] insertionOrder;
         private int count;
         private int size;
@@ -13,18 +13,18 @@ namespace lb_7
 
         public Container()
         {
-            items = new Object[1];
+            items = new IName[1];
             insertionOrder = new int[1];
             count = 0;
             size = 1;
             nextInsertionId = 0;
         }
 
-        public void Add(object _newObject)
+        public void Add(IName _newObject)
         {
             if (count == size)
             {
-                Object[] newArray = new Object[size * 2];
+                IName[] newArray = new IName[size * 2];
                 int[] newInsertionOrder = new int[size * 2];
                 for (int i = 0; i < size; i++)
                 {
@@ -107,7 +107,7 @@ namespace lb_7
         }
 
 
-        public Object[] GetItems()
+        public IName[] GetItems()
         {
             return items;
         }
@@ -116,9 +116,9 @@ namespace lb_7
             return count;
         }
 
-        public Object[] GetItemsByParameter<T>(string param, T i)
+        public IName[] GetItemsByParameter<T>(string param, T i)
         {
-            Object[] _items = new Object[count];
+            IName[] _items = new IName[count];
             int index = 0;
             foreach (var item in items)
             {
@@ -135,7 +135,7 @@ namespace lb_7
             return index == 0 ? default : _items;
         }
 
-        public Object this[int i]
+        public IName this[int i]
         {
             get
             {
@@ -150,8 +150,8 @@ namespace lb_7
             }
         }
 
-        public Object[] this[string i] => GetItemsByParameter("Name", i);
-        public Object[] this[decimal i] => GetItemsByParameter("Price", i);
+        public IName[] this[string i] => GetItemsByParameter("Name", i);
+        public IName[] this[decimal i] => GetItemsByParameter("Price", i);
 
     }
 }

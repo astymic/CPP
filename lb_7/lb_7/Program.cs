@@ -1,7 +1,6 @@
-﻿
-using System.Reflection;
+﻿using System.Reflection;
 using lb_7.Classes;
-
+using lb_7.Interfaces;
 
 namespace lb_7;
 
@@ -517,7 +516,7 @@ class Program
         Console.ResetColor();
         string classChoice = Console.ReadLine();
 
-        object newItem = null;
+        IName newItem = null;
         try
         {
             switch (classChoice)

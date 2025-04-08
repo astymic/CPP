@@ -1,4 +1,6 @@
-﻿namespace lb_7.Classes
+﻿using lb_7.Interfaces;
+
+namespace lb_7.Classes
 {
     class RealEstateInvestment : Product
     {

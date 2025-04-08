@@ -26,6 +26,6 @@ namespace lb_7.Classes
             return $"{Name}, Price: {Price}";
         }
 
-        //public int CompareTo(Product other) { return 1;  }
+        public int CompareTo(object that) { return this.Price.CompareTo(that); } // Compare Product.Price with recivied value (expected - decimal Price)
     }
 }
