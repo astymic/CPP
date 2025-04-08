@@ -2,7 +2,7 @@
 {
     public interface IName : IComparable
     {
-        string Name { get; }
+        string Name { get; set; }
 
     }
 }

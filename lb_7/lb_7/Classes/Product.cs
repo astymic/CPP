@@ -1,6 +1,8 @@
-﻿namespace lb_7.Classes
+﻿using lb_7.Interfaces;
+
+namespace lb_7.Classes
 {
-    class Product
+    class Product : IName
     {
         public string Name { get; set; }
         public decimal Price { get; set; }
@@ -23,5 +25,7 @@
         {
             return $"{Name}, Price: {Price}";
         }
+
+        //public int CompareTo(Product other) { return 1;  }
     }
 }
