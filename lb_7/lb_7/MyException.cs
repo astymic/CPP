@@ -1,4 +1,4 @@
-﻿namespace lb_6.Classes
+﻿namespace lb_7
 {
     class ValueLessThanZero : Exception
     {
