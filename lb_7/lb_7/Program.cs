@@ -25,12 +25,12 @@ class Program
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("4. Get Element by Order of Addition");
             Console.WriteLine("5. Get Element by Name");
-            Console.WriteLine("6. Get Elements by Price");
+            //Console.WriteLine("6. Get Elements by Price");
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("#. --- ### ### ### ---");
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("7. Sort Container by Price");
-            Console.WriteLine("8. Remove Element by ID (1st - based)");
+            Console.WriteLine("6. Sort Container by Price");
+            Console.WriteLine("7. Remove Element by ID (1st - based)");
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("#. --- ### ### ### ---");
             Console.ForegroundColor = ConsoleColor.Cyan;
@@ -88,11 +88,11 @@ class Program
                         GetElementByName(container);
                         break;
 
-                    case "6":
-                        GetElementsByPrice(container);
-                        break;
+                    //case "6":
+                    //    GetElementsByPrice(container);
+                    //    break;
 
-                    case "7":
+                    case "6":
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("\n--- Sorting Container by Price ---");
                         Console.ResetColor();
@@ -108,7 +108,7 @@ class Program
                         }
                         break;
 
-                    case "8":
+                    case "7":
                         RemoveElementByIndex(container);
                         break;
 
@@ -250,57 +250,57 @@ class Program
         }
     }
 
-    static void GetElementsByPrice(Container container)
-    {
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine("\n--- Get Elements by Price ---");
-        Console.ResetColor();
-        if (container.GetCount() == 0)
-        {
-            Console.WriteLine("Container is empty. Cannot get elements by price.");
-            return;
-        }
+    //static void GetElementsByPrice(Container container)
+    //{
+    //    Console.ForegroundColor = ConsoleColor.Green;
+    //    Console.WriteLine("\n--- Get Elements by Price ---");
+    //    Console.ResetColor();
+    //    if (container.GetCount() == 0)
+    //    {
+    //        Console.WriteLine("Container is empty. Cannot get elements by price.");
+    //        return;
+    //    }
 
-        Console.Write("Enter the Price to search for: ");
-        if (decimal.TryParse(Console.ReadLine(), out decimal price))
-        {
-            Object[] items = container[price];
+    //    Console.Write("Enter the Price to search for: ");
+    //    if (decimal.TryParse(Console.ReadLine(), out decimal price))
+    //    {
+    //        Object[] items = container[price];
 
-            if (items != null)
-            {
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine($"Elements with Price '{price}':");
-                Console.ResetColor();
-                int foundCount = 0;
-                foreach (var item in items)
-                {
-                    if (item != null)
-                    {
-                        Console.WriteLine($"- {item.ToString()}");
-                        foundCount++;
-                    }
-                }
-                if (foundCount == 0)
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"No elements found with Price '{price}'.");
-                    Console.ResetColor();
-                }
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"No elements found with Price '{price}'.");
-                Console.ResetColor();
-            }
-        }
-        else
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("Invalid input. Please enter a valid decimal price.");
-            Console.ResetColor();
-        }
-    }
+    //        if (items != null)
+    //        {
+    //            Console.ForegroundColor = ConsoleColor.Cyan;
+    //            Console.WriteLine($"Elements with Price '{price}':");
+    //            Console.ResetColor();
+    //            int foundCount = 0;
+    //            foreach (var item in items)
+    //            {
+    //                if (item != null)
+    //                {
+    //                    Console.WriteLine($"- {item.ToString()}");
+    //                    foundCount++;
+    //                }
+    //            }
+    //            if (foundCount == 0)
+    //            {
+    //                Console.ForegroundColor = ConsoleColor.Yellow;
+    //                Console.WriteLine($"No elements found with Price '{price}'.");
+    //                Console.ResetColor();
+    //            }
+    //        }
+    //        else
+    //        {
+    //            Console.ForegroundColor = ConsoleColor.Yellow;
+    //            Console.WriteLine($"No elements found with Price '{price}'.");
+    //            Console.ResetColor();
+    //        }
+    //    }
+    //    else
+    //    {
+    //        Console.ForegroundColor = ConsoleColor.Red;
+    //        Console.WriteLine("Invalid input. Please enter a valid decimal price.");
+    //        Console.ResetColor();
+    //    }
+    //}
 
     static void RemoveElementByIndex(Container container)
     {
@@ -448,52 +448,54 @@ class Program
             else demoPrice = -1m; // Reset if price was 0 or invalid
         }
 
-        Console.WriteLine($"\n3. Using decimal indexer container[{demoPrice}]:");
-        if (demoPrice > 0)
-        {
-            try
-            {
-                Object[] itemsByPrice = container[demoPrice];
-                if (itemsByPrice != null)
-                {
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine($"   Found items with price {demoPrice}:");
-                    int foundCount = 0;
-                    foreach (var item in itemsByPrice)
-                    {
-                        if (item != null)
-                        {
-                            Console.WriteLine($"   - {item.ToString()}");
-                            foundCount++;
-                        }
-                    }
-                    if (foundCount == 0) // Should not happen if itemsByPrice != null
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"   No items found for price {demoPrice} (indexer returned non-null but empty?).");
-                    }
-                    Console.ResetColor();
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"   No items found for price {demoPrice}.");
-                    Console.ResetColor();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"   Error getting items by price {demoPrice}: {ex.Message}");
-                Console.ResetColor();
-            }
-        }
-        else
-        {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("   Could not find an item with a positive price in random sampling to demonstrate.");
-            Console.ResetColor();
-        }
+        // --- Demonstration Price Indexer ---
+
+        //Console.WriteLine($"\n3. Using decimal indexer container[{demoPrice}]:");
+        //if (demoPrice > 0)
+        //{
+        //    try
+        //    {
+        //        Object[] itemsByPrice = container[demoPrice];
+        //        if (itemsByPrice != null)
+        //        {
+        //            Console.ForegroundColor = ConsoleColor.Cyan;
+        //            Console.WriteLine($"   Found items with price {demoPrice}:");
+        //            int foundCount = 0;
+        //            foreach (var item in itemsByPrice)
+        //            {
+        //                if (item != null)
+        //                {
+        //                    Console.WriteLine($"   - {item.ToString()}");
+        //                    foundCount++;
+        //                }
+        //            }
+        //            if (foundCount == 0) // Should not happen if itemsByPrice != null
+        //            {
+        //                Console.ForegroundColor = ConsoleColor.Yellow;
+        //                Console.WriteLine($"   No items found for price {demoPrice} (indexer returned non-null but empty?).");
+        //            }
+        //            Console.ResetColor();
+        //        }
+        //        else
+        //        {
+        //            Console.ForegroundColor = ConsoleColor.Yellow;
+        //            Console.WriteLine($"   No items found for price {demoPrice}.");
+        //            Console.ResetColor();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.ForegroundColor = ConsoleColor.Red;
+        //        Console.WriteLine($"   Error getting items by price {demoPrice}: {ex.Message}");
+        //        Console.ResetColor();
+        //    }
+        //}
+        //else
+        //{
+        //    Console.ForegroundColor = ConsoleColor.Yellow;
+        //    Console.WriteLine("   Could not find an item with a positive price in random sampling to demonstrate.");
+        //    Console.ResetColor();
+        //}
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("--- End Indexer Demonstration ---");
         Console.ResetColor();
@@ -583,9 +585,9 @@ class Program
         DrawHorizontalLine(tableWidth);
         WriteHeaderRow();
         DrawHorizontalLine(tableWidth);
-        int pageCount = (int)Math.Ceiling((double)currentCount);
+        int itemsCount = (int)Math.Ceiling((double)currentCount);
 
-        for (int i = 0; i < pageCount; i++)
+        for (int i = 0; i < itemsCount; i++)
         {
             Object[] items = container.GetItems(); // Get the raw array
             var item = items[i]; // Using the indexer here!

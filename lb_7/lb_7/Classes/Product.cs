@@ -1,4 +1,5 @@
 ﻿using lb_7.Interfaces;
+using System.Data;
 
 namespace lb_7.Classes
 {
@@ -26,6 +27,15 @@ namespace lb_7.Classes
             return $"{Name}, Price: {Price}";
         }
 
-        public int CompareTo(object that) { return this.Price.CompareTo(that); } // Compare Product.Price with recivied value (expected - decimal Price)
+        public int CompareTo(object obj) 
+        {
+            if (obj == null) return 1;
+
+            //if (obj is IName other)
+            //{
+            //    return this.T.CompareTo(other.T);
+            //}
+            throw new ArgumentException("");
+        } 
     }
 }

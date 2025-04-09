@@ -135,23 +135,53 @@ namespace lb_7
             return index == 0 ? default : _items;
         }
 
-        public IName this[int i]
+        public IName GetInstanceByInsertionId(int id)
         {
-            get
-            {
-                if (i < 0) throw new IndexOutOfRangeException();
-                if (i > nextInsertionId) throw new IndexOutOfRangeException($"There is no entry number {i}");
+            if (id < 0) throw new IndexOutOfRangeException();
+            if (id > nextInsertionId) throw new IndexOutOfRangeException($"There is no entry number {id}");
 
-                for (int j = 0; j < count; j++)
-                    if (insertionOrder[j] == i)
-                        return items[j];
+            for (int j = 0; j < count; j++)
+                if (insertionOrder[j] == id)
+                    return items[j];
 
-                return null;
-            }
+            return null;
         }
 
-        public IName[] this[string i] => GetItemsByParameter("Name", i);
-        public IName[] this[decimal i] => GetItemsByParameter("Price", i);
+        public IName this[int i] // Insertion order indexer
+        {
+            get => GetInstanceByInsertionId(i);
+            //set
+            //{
+            //    IName instance = GetInstanceByInsertionId(i);
+            //    if (instance == null) throw new IndexOutOfRangeException();
+            //    instance = value; // Should change logic to get parameter to change from 'this' and set value 
+            //}
+        }
+
+        public IName[] this[string i] // Name indexer
+        {
+            get => GetItemsByParameter("Name", i); 
+            //set
+            //{
+            //    if (value == null) throw new ArgumentNullException(nameof(value));
+
+
+            //    var itemsWithSameName = GetItemsByParameter("Name", i);
+            //    if (itemsWithSameName == null || itemsWithSameName.Length == 0) 
+            //        throw new KeyNotFoundException(); 
+
+            //    foreach (var item in itemsWithSameName)
+            //    {
+            //        if (item == this) // I expected this will work, if use this 'Container[]'
+            //        { 
+            //            item.Name = value; 
+            //        } // Should change logic to compare 
+            //    }
+            //}
+        }
+
+        // --- Price indexer ---
+        //public IName[] this[decimal i] => GetItemsByParameter("Price", i); 
 
     }
 }
