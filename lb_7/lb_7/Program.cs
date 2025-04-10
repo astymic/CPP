@@ -4,7 +4,6 @@ using lb_7.Interfaces;
 
 namespace lb_7;
 
-
 class Program
 {
     static void Main()

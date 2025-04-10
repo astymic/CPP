@@ -5,7 +5,7 @@ namespace lb_7
 {
     class Container
     {
-        private IName[] items;
+        private IName?[] items;
         private int[] insertionOrder;
         private int count;
         private int size;
@@ -82,19 +82,19 @@ namespace lb_7
             }
         }
 
-        private static T GetPropertyValue<T>(object item, string propertyName)
+        private static T? GetPropertyValue<T>(object item, string propertyName)
         {
             if (item == null) return default;
 
-            PropertyInfo property = item.GetType().GetProperty(propertyName);
+            PropertyInfo? property = item.GetType().GetProperty(propertyName);
             if (property != null && property.PropertyType == typeof(T))
             {
-                return (T)property.GetValue(item);
+                return (T?)property.GetValue(item);
             }
             return default;
         }
 
-        public string ToString()
+        public override string ToString()
         {
             string res = "";
             foreach (var item in items)
@@ -135,19 +135,21 @@ namespace lb_7
             return index == 0 ? default : _items;
         }
 
-        public IName GetInstanceByInsertionId(int id)
+        public IName? GetInstanceByInsertionId(int id)
         {
-            if (id < 0) throw new IndexOutOfRangeException();
-            if (id > nextInsertionId) throw new IndexOutOfRangeException($"There is no entry number {id}");
+            if (id < 0 | id > nextInsertionId) throw new IndexOutOfRangeException($"There is no entry number {id}");
 
             for (int j = 0; j < count; j++)
+            { 
                 if (insertionOrder[j] == id)
+                { 
                     return items[j];
-
+                }
+            }
             return null;
         }
 
-        public IName this[int i] // Insertion order indexer
+        public IName? this[int i] // Insertion order indexer
         {
             get => GetInstanceByInsertionId(i);
             //set
@@ -179,9 +181,5 @@ namespace lb_7
             //    }
             //}
         }
-
-        // --- Price indexer ---
-        //public IName[] this[decimal i] => GetItemsByParameter("Price", i); 
-
     }
 }

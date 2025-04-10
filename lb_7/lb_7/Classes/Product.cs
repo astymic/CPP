@@ -1,5 +1,4 @@
 ﻿using lb_7.Interfaces;
-using System.Data;
 
 namespace lb_7.Classes
 {
@@ -31,11 +30,11 @@ namespace lb_7.Classes
         {
             if (obj == null) return 1;
 
-            //if (obj is IName other)
-            //{
-            //    return this.T.CompareTo(other.T);
-            //}
-            throw new ArgumentException("");
+            if (obj is not IName otherProduct)
+            {
+                throw new ArgumentException($"Object must be type {nameof(IName)}");
+            }
+            return StringComparer.OrdinalIgnoreCase.Compare(this.Name, otherProduct.Name);
         } 
     }
 }
