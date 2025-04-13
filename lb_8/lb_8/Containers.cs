@@ -1,11 +1,12 @@
-﻿using lb_7.Interfaces;
+﻿using System.Collections.Generic;
+using lb_8.Interfaces;
 using System.Reflection;
 
-namespace lb_7
+namespace lb_8
 {
-    class Container
+    class Container<T> where T : class, IName
     {
-        private IName?[] items;
+        private T?[] items;
         private int[] insertionOrder;
         private int count;
         private int size;
@@ -13,18 +14,18 @@ namespace lb_7
 
         public Container()
         {
-            items = new IName[1];
+            items = new T?[1];
             insertionOrder = new int[1];
             count = 0;
             size = 1;
             nextInsertionId = 0;
         }
 
-        public void Add(IName _newObject)
+        public void Add(T _newObject)
         {
             if (count == size)
             {
-                IName[] newArray = new IName[size * 2];
+                T?[] newArray = new T?[size * 2];
                 int[] newInsertionOrder = new int[size * 2];
                 for (int i = 0; i < size; i++)
                 {
@@ -40,18 +41,18 @@ namespace lb_7
             count++;
         }
 
-        public object RemoveById(int _index)
+        public T? RemoveById(int _index)
         {
             if (_index < 0 || _index > count)
                 throw new IndexOutOfRangeException();
 
-            object deletedObject = items[_index];
+            T? deletedObject = items[_index]!;
             for (int i = _index; i < count - 1; i++)
             {
                 items[i] = items[i + 1];
                 insertionOrder[i] = insertionOrder[i + 1];
             }
-            items[count - 1] = null;
+            items[count - 1] = default;
             insertionOrder[count - 1] = 0;
             count--;
 
@@ -82,14 +83,14 @@ namespace lb_7
             }
         }
 
-        private static T? GetPropertyValue<T>(object item, string propertyName)
+        private static V? GetPropertyValue<V>(object item, string propertyName)
         {
             if (item == null) return default;
 
             PropertyInfo? property = item.GetType().GetProperty(propertyName);
-            if (property != null && property.PropertyType == typeof(T))
+            if (property != null && property.CanRead)
             {
-                return (T?)property.GetValue(item);
+                return (V?)property.GetValue(item);
             }
             return default;
         }
@@ -107,7 +108,7 @@ namespace lb_7
         }
 
 
-        public IName[] GetItems()
+        public T?[] GetItems()
         {
             return items;
         }
@@ -119,16 +120,32 @@ namespace lb_7
         {
             return nextInsertionId;
         }
+   
 
-        public IName[] GetItemsByParameter<T>(string param, T i)
+        public bool IsEmpty(bool printMessage = true)
         {
-            IName[] _items = new IName[count];
+            if (count == 0)
+            { 
+                if (printMessage)
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("Container is empty");
+                    Console.ResetColor();
+                }
+                return true;
+            }
+            return false;
+        }
+
+        public T[] GetItemsByParameter<Y>(string param, Y i)
+        {
+            var _items = new T[count];
             int index = 0;
             foreach (var item in items)
             {
                 if (item != null)
                 {
-                    var value = GetPropertyValue<T>(item, param);
+                    var value = GetPropertyValue<Y>(item, param);
                     if (value != null && value.Equals(i))
                     {
                         _items[index] = item;
@@ -139,28 +156,29 @@ namespace lb_7
             return index == 0 ? default : _items;
         }
 
-        public IName? GetInstanceByInsertionId(int id)
+        public T? GetInstanceByInsertionId(int id)
         {
             if (id < 0 | id > nextInsertionId) throw new IndexOutOfRangeException($"There is no entry number {id}");
 
             for (int j = 0; j < count; j++)
-            {
+            { 
                 if (insertionOrder[j] == id)
-                {
+                { 
                     return items[j];
                 }
             }
-            return null;
+            return default;
         }
 
-        public IName? this[int id] // Insertion order indexer
+        // Insertion order indexer
+        public T? this[int id] 
         {
             get => GetInstanceByInsertionId(id);
             set
             {
                 if (value == null) throw new ArgumentNullException(nameof(value));
 
-                IName _item = GetInstanceByInsertionId(id);
+                T? _item = GetInstanceByInsertionId(id);
                 if (_item != null)
                 {
                     _item = value;
@@ -169,14 +187,18 @@ namespace lb_7
             }
         }
 
-        public IName[] this[string i] // Name indexer
+        // Name indexer
+        public T[] this[string i] 
         {
-            get => GetItemsByParameter("Name", i);
+            get => GetItemsByParameter("Name", i); 
         }
 
-        //public IName[] this[decimal i] // Price indexer
+        //// Price indexer
+        //public T[] this[decimal i] 
         //{
         //    get => GetItemsByParameter("Price", i);
         //}
     }
+
+
 }
