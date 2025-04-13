@@ -200,5 +200,124 @@ namespace lb_8
         //}
     }
 
+    class ContainerLinkedList<T> where T : class, IName
+    {
+        public class Node<V>
+        {
+            public V Data { get; set; }
+            public Node<V> Next { get; set; }
+            public Node<V> Previous { get; set; }
 
+            public Node(V data)
+            {
+                Data = data;
+                Next = null;
+                Previous = null;
+            }
+        }
+
+
+        private Node<T> _head;
+
+        public Node<T> First => _head;
+        public Node<T> Last
+        {
+            get => GetLastNode();
+        }
+        public Node<T> Next => _head.Next;
+        public Node<T> Previous => _head.Previous;
+        
+        private int _count;
+        public int Count
+        {
+            get
+            {
+                if (_count < 0)
+                {
+                    _count = 0;
+                }
+                return _count;
+            }
+            set => _count = value;                
+        }
+
+
+        public void AddFirst(T data)
+        {
+            Node<T> newNode = new Node<T>(data);
+            Count++;
+            if (_head != null) 
+            {
+                _head.Next = _head;
+                _head.Previous = newNode;
+            }
+            _head = newNode;
+        }
+
+        public void AddLast(T data) 
+        {
+            Node<T> newNode = new Node<T>(data);
+            Count++;
+            if (_head == null) 
+            {
+                _head = newNode;
+                return;
+            }
+            Node<T> lastNode = GetLastNode();
+            lastNode.Next = newNode;
+            newNode.Previous = lastNode;
+        }
+
+        private Node<T> GetLastNode()
+        {
+            Node<T> node = _head;
+            while (node.Next != null)
+            {
+                node = node.Next;
+            }
+            return node;
+        }
+
+        public T? RemoveByIndex(int index)
+        {
+            int count = 0;
+            var current = _head;
+            while (current != null && count < index)
+            {
+                current = current.Next;
+                count++;
+            }
+
+            if (current == null) throw new ArgumentOutOfRangeException(nameof(index));
+
+            T? deletedItem = current.Data;
+
+            if (current.Previous != null)
+                current.Previous.Next = current.Next;
+            else
+                _head = current.Next;
+            
+            current.Next.Previous = current.Previous;
+
+            return deletedItem;
+        }
+
+        public void Sort()
+        {
+
+        }
+
+        public override string ToString()
+        {
+            if (_head is null) return "Container is empty.";
+            
+            string res = string.Empty;
+            while (_head.Next != null)
+            {
+                res += _head.Data.ToString() + "\n";
+                _head = _head.Next;
+            }
+            return res;
+        }
+    }
 }
