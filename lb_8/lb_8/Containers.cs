@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using lb_8.Interfaces;
 using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
 
 namespace lb_8
 {
@@ -200,6 +201,7 @@ namespace lb_8
         //}
     }
 
+
     class ContainerLinkedList<T> where T : class, IName
     {
         public class Node<V>
@@ -238,7 +240,7 @@ namespace lb_8
                 }
                 return _count;
             }
-            set => _count = value;                
+            private set => _count = value;                
         }
 
 
@@ -248,7 +250,7 @@ namespace lb_8
             Count++;
             if (_head != null) 
             {
-                _head.Next = _head;
+                newNode.Next = _head;
                 _head.Previous = newNode;
             }
             _head = newNode;
@@ -297,14 +299,63 @@ namespace lb_8
             else
                 _head = current.Next;
             
-            current.Next.Previous = current.Previous;
+            if (current.Next != null)
+                current.Next.Previous = current.Previous;
 
             return deletedItem;
         }
 
-        public void Sort()
+        public void Sort() // Possible problem with BIS - should use IComparable<T> 
         {
+            if (_head == null) return;
 
+            List<T> list = new List<T>();
+            for (var node = _head; node != null; node = node.Next)
+            {
+                list.Add(node.Data);
+            }
+
+            BinaryInsertionSort(list);
+            //list.Sort();
+            var current = _head;
+            foreach (var item in list)
+            {
+                current.Data = item;
+                current = current.Next;
+            }
+        }
+
+        private void BinaryInsertionSort(List<T> list)
+        {
+            for (int i = 1; i < list.Count; i++)
+            {
+                T key = list[i];
+                int ins = BinarySearch(list, key, 0, i);
+
+                if (ins < i)
+                {
+                    list.RemoveAt(i);
+                    list.Insert(ins, key);
+                }
+            }
+        }
+
+        private int BinarySearch(List<T> list, T key, int low, int high)
+        {
+            while (low < high)
+            {
+                int mid = low + (high - low) / 2;
+
+                if (Comparer<T>.Default.Compare(key, list[mid]) < 0)
+                {
+                    high = mid;
+                }
+                else
+                {
+                    low = mid + 1;
+                }
+            }
+            return low;
         }
 
         public override string ToString()
@@ -312,12 +363,23 @@ namespace lb_8
             if (_head is null) return "Container is empty.";
             
             string res = string.Empty;
-            while (_head.Next != null)
+            var current = _head;
+            while (current.Next != null)
             {
-                res += _head.Data.ToString() + "\n";
-                _head = _head.Next;
+                res += current.Data.ToString() + "\n";
+                current = current.Next;
             }
             return res;
         }
+    
+        //public T? this[int index]
+        //{
+        //    get { return _head; }
+        //}
+
+        //public T? this[string name]
+        //{
+        //    get {  return this[name]; }
+        //}
     }
 }
