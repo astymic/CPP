@@ -280,19 +280,23 @@ class Program
 
             foreach (var foundItem in itemsFound)
             {
-                int ID = FindId(foundItem, allItems, currentIds); // Find ID efficiently FindInsertionId
-                if (ID != -1)
+                if (foundItem != null)
                 {
-                    WriteDataRowById(ID, foundItem, tableWidth); // Pass width for padding
+                    int ID = FindId(foundItem, allItems, currentIds); // Find ID efficiently FindInsertionId
+                    if (ID != -1)
+                    {
+                        WriteDataRowById(ID, foundItem, tableWidth); // Pass width for padding
+                    }
+                    else
+                    {
+                        // This is unlikely if item came from container, but handle defensively
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"| Warning: Could not map found item '{foundItem.ToString()?.Substring(0, 20)}...'.".PadRight(tableWidth - 1) + "|");
+                        Console.ResetColor();
+                    }
+                    DrawHorizontalLine(tableWidth);
                 }
-                else
-                {
-                    // This is unlikely if item came from container, but handle defensively
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"| Warning: Could not map found item '{foundItem.ToString()?.Substring(0, 20)}...'.".PadRight(tableWidth - 1) + "|");
-                    Console.ResetColor();
-                }
-                DrawHorizontalLine(tableWidth);
+
             }
         }
         else
@@ -312,12 +316,12 @@ class Program
 
         int maxId = container.GetInsertionId();
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.Write($"Enter item insertion ID to modify (0 to {maxId - 1}): ");
+        Console.Write($"Enter item insertion ID to modify (1 to {maxId}): ");
         Console.ResetColor();
 
-        if (int.TryParse(Console.ReadLine(), out int id) && id >= 0 && id < maxId)
+        if (int.TryParse(Console.ReadLine(), out int id) && id - 1 >= 0 && id - 1 < maxId)
         {
-            IName? itemToModify = container[id]; // Get item using indexer
+            IName? itemToModify = container[id - 1]; // Get item using indexer
 
             if (itemToModify == null)
             {
@@ -334,7 +338,7 @@ class Program
         }
         else
         {
-            PrintErrorMessage($"Invalid input. Please enter a valid integer ID between 0 and {maxId - 1}.");
+            PrintErrorMessage($"Invalid input. Please enter a valid integer ID between 1 and {maxId}.");
         }
     }
 
@@ -357,7 +361,6 @@ class Program
         }
 
         IName[]? itemsFound = container[name]; // Use name indexer
-        Console.WriteLine($"Items {itemsFound}");
         List<IName> validItems = itemsFound?.Where(item => item != null).ToList() ?? new List<IName>();
 
         if (validItems.Count == 0)
@@ -702,7 +705,10 @@ class Program
                 {
                     Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.WriteLine($"   Found {itemsByName.Length} item(s):");
-                    foreach (var item in itemsByName) Console.WriteLine($"   - {item.ToString() ?? "N/A"}");
+                    foreach (var item in itemsByName)
+                    { 
+                        if (item != null) Console.WriteLine($"   - {item.ToString() ?? "N/A"}");
+                    }
                     Console.ResetColor();
                 }
                 else
