@@ -223,6 +223,7 @@ namespace lb_8
 
         public ContainerLinkedList()
         {
+            _head = null;
             Count = 0;
             InsertionOrder = new List<int>(); 
             NextInsertionId = 0;
@@ -271,12 +272,14 @@ namespace lb_8
             if (_head == null) 
             {
                 _head = newNode;
-                return;
             }
-            Node<T> lastNode = GetLastNode();
-            lastNode.Next = newNode;
-            newNode.Previous = lastNode;
-           
+            else
+            {
+                Node<T> lastNode = GetLastNode();
+                lastNode.Next = newNode;
+                newNode.Previous = lastNode;
+            }
+            
             Count++;
             InsertionOrder.Add(NextInsertionId++);
         }
@@ -375,6 +378,15 @@ namespace lb_8
             return low;
         }
 
+        // Clear Container
+        public void Clear()
+        {
+            _head = null;
+            Count = 0;
+            InsertionOrder.Clear();
+            NextInsertionId = 0;
+        }
+
         public override string ToString()
         {
             if (_head is null) return "Container is empty.";
@@ -383,19 +395,19 @@ namespace lb_8
             var current = _head;
             while (current != null)
             {
-                res += current.Data.ToString() + "\n";
+                res += current.Data?.ToString() + "\n";
                 current = current.Next;
             }
             return res;
         }
 
-        private List<T> GetItemsByParameter<Y>(string parameterm, Y i)
+        private List<T> GetItemsByParameter<Y>(string parameter, Y i)
         {
             List<T> values = new List<T>();
             var current = _head;
             while (current != null) 
             {
-                var propValue = Helper.GetPropertyValue<string>(current.Data, parameterm);
+                var propValue = Helper.GetPropertyValue<Y>(current.Data, parameter);
                 if (propValue != null && propValue.Equals(i))
                 { 
                     values.Add(current.Data);
@@ -405,6 +417,7 @@ namespace lb_8
             return values.Count == 0 ? null : values;
         }
 
+        // Insortion indexer
         public T? this[int index]
         {
             get
@@ -440,6 +453,7 @@ namespace lb_8
             }
         }
 
+        // Name indexer
         public List<T> this[string name]
         {
             get => GetItemsByParameter<string>("Name", name);
