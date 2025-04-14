@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using lb_8.Interfaces;
 using System.Reflection;
+using System.Net.Http.Headers;
 
 namespace lb_8
 {
@@ -97,18 +98,6 @@ namespace lb_8
                 Console.ResetColor();
             }
         }
-
-        //private static V? GetPropertyValue<V>(object item, string propertyName)
-        //{
-        //    if (item == null) return default;
-
-        //    PropertyInfo? property = item.GetType().GetProperty(propertyName);
-        //    if (property != null && property.CanRead)
-        //    {
-        //        return (V?)property.GetValue(item);
-        //    }
-        //    return default;
-        //}
 
         public override string ToString()
         {
@@ -232,7 +221,7 @@ namespace lb_8
             }
         }
 
-        ContainerLinkedList()
+        public ContainerLinkedList()
         {
             Count = 0;
             InsertionOrder = new List<int>(); 
@@ -244,8 +233,6 @@ namespace lb_8
 
         public Node<T> First => _head;
         public Node<T> Last => GetLastNode();
-        public Node<T> Next => _head.Next;
-        public Node<T> Previous => _head.Previous;
         
         private int _count;
         public int Count
@@ -401,15 +388,61 @@ namespace lb_8
             }
             return res;
         }
-    
-        //public T? this[int index]
-        //{
-        //    get { return _head; }
-        //}
 
-        //public T? this[string name]
-        //{
-        //    get {  return this[name]; }
-        //}
+        private List<T> GetItemsByParameter<Y>(string parameterm, Y i)
+        {
+            List<T> values = new List<T>();
+            var current = _head;
+            while (current != null) 
+            {
+                var propValue = Helper.GetPropertyValue<string>(current.Data, parameterm);
+                if (propValue != null && propValue.Equals(i))
+                { 
+                    values.Add(current.Data);
+                }
+                current = current.Next;
+            }
+            return values.Count == 0 ? null : values;
+        }
+
+        public T? this[int index]
+        {
+            get
+            {
+                var current = _head;
+                int count = 0;
+                while (current != null)
+                {
+                    if (InsertionOrder[count] == index)
+                        return current.Data;
+                    current = current.Next;
+                    count++;
+                }
+                return null;
+            }
+            set
+            {
+                if (value == null) throw new ArgumentNullException(nameof(value));
+
+                var current = _head;
+                int count = 0;
+                while (current != null)
+                {
+                    if (InsertionOrder[count] == index)
+                    { 
+                        current.Data = value;
+                        return;
+                    }
+                    current = current.Next;
+                    count++;
+                }
+                throw new IndexOutOfRangeException("Can not find element by this insertion index");
+            }
+        }
+
+        public List<T> this[string name]
+        {
+            get => GetItemsByParameter<string>("Name", name);
+        }
     }
 }
