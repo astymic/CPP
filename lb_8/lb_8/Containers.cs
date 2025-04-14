@@ -5,6 +5,21 @@ using System.Reflection.Metadata.Ecma335;
 
 namespace lb_8
 {
+    class Helper
+    {
+        public static V? GetPropertyValue<V>(object item, string propertyName)
+        {
+            if (item == null) return default;
+
+            PropertyInfo? property = item.GetType().GetProperty(propertyName);
+            if (property != null && property.CanRead)
+            {
+                return (V?)property.GetValue(item);
+            }
+            return default;
+        }
+    }
+    
     class Container<T> where T : class, IName
     {
         private T?[] items;
@@ -68,7 +83,7 @@ namespace lb_8
                 {
                     for (int j = 0; j < count - i - 1; j++)
                     {
-                        if (GetPropertyValue<decimal>(items[j], "Price") > GetPropertyValue<decimal>(items[j + 1], "Price"))
+                        if (Helper.GetPropertyValue<decimal>(items[j], "Price") > Helper.GetPropertyValue<decimal>(items[j + 1], "Price"))
                         {
                             (items[j], items[j + 1]) = (items[j + 1], items[j]);
                             (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
@@ -84,17 +99,17 @@ namespace lb_8
             }
         }
 
-        private static V? GetPropertyValue<V>(object item, string propertyName)
-        {
-            if (item == null) return default;
+        //private static V? GetPropertyValue<V>(object item, string propertyName)
+        //{
+        //    if (item == null) return default;
 
-            PropertyInfo? property = item.GetType().GetProperty(propertyName);
-            if (property != null && property.CanRead)
-            {
-                return (V?)property.GetValue(item);
-            }
-            return default;
-        }
+        //    PropertyInfo? property = item.GetType().GetProperty(propertyName);
+        //    if (property != null && property.CanRead)
+        //    {
+        //        return (V?)property.GetValue(item);
+        //    }
+        //    return default;
+        //}
 
         public override string ToString()
         {
@@ -146,7 +161,7 @@ namespace lb_8
             {
                 if (item != null)
                 {
-                    var value = GetPropertyValue<Y>(item, param);
+                    var value = Helper.GetPropertyValue<Y>(item, param);
                     if (value != null && value.Equals(i))
                     {
                         _items[index] = item;
@@ -218,6 +233,13 @@ namespace lb_8
             }
         }
 
+        ContainerLinkedList()
+        {
+            Count = 0;
+            InsertionOrder = new int[1]; 
+            NextInsertionId = 0;
+        }
+
 
         private Node<T> _head;
 
@@ -242,18 +264,24 @@ namespace lb_8
             }
             private set => _count = value;                
         }
+        private int NextInsertionId;
+        private int[] InsertionOrder;
 
 
         public void AddFirst(T data)
         {
             Node<T> newNode = new Node<T>(data);
             Count++;
+
             if (_head != null) 
             {
                 newNode.Next = _head;
                 _head.Previous = newNode;
             }
             _head = newNode;
+            Count++;
+
+            UpdateInsertionOrder();
         }
 
         public void AddLast(T data) 
@@ -268,6 +296,18 @@ namespace lb_8
             Node<T> lastNode = GetLastNode();
             lastNode.Next = newNode;
             newNode.Previous = lastNode;
+            Count++;
+            
+            UpdateInsertionOrder();
+        }
+
+        private void UpdateInsertionOrder()
+        {
+            int[] newInsertionOrder = new int[Count];
+
+            InsertionOrder.CopyTo(newInsertionOrder, 0);
+            newInsertionOrder[NextInsertionId] = NextInsertionId++;
+            InsertionOrder = newInsertionOrder;
         }
 
         private Node<T> GetLastNode()
@@ -302,10 +342,14 @@ namespace lb_8
             if (current.Next != null)
                 current.Next.Previous = current.Previous;
 
+            Count--;
+
+            InsertionOrder = InsertionOrder.Where(val => val != index).ToArray();
+
             return deletedItem;
         }
 
-        public void Sort() // Possible problem with BIS - should use IComparable<T> 
+        public void Sort(string sortBy = "Price")
         {
             if (_head == null) return;
 
@@ -315,8 +359,9 @@ namespace lb_8
                 list.Add(node.Data);
             }
 
-            BinaryInsertionSort(list);
-            //list.Sort();
+            BinaryInsertionSort(list, sortBy);
+            //list.Sort((p1, p2) => p1.Price.CompareTo(p2.Price));
+
             var current = _head;
             foreach (var item in list)
             {
@@ -325,35 +370,36 @@ namespace lb_8
             }
         }
 
-        private void BinaryInsertionSort(List<T> list)
+        private void BinaryInsertionSort(List<T> list, string propertyName)
         {
+            int[] newInsertionOrder = InsertionOrder;
             for (int i = 1; i < list.Count; i++)
             {
-                T key = list[i];
-                int ins = BinarySearch(list, key, 0, i);
+                T currentItem = list[i];
+                decimal currentValue = Helper.GetPropertyValue<decimal>(currentItem, propertyName);
+                int ins = BinarySearch(list, currentValue, propertyName, 0, i);
 
                 if (ins < i)
                 {
                     list.RemoveAt(i);
-                    list.Insert(ins, key);
+                    list.Insert(ins, currentItem);
+
+                    newInsertionOrder = newInsertionOrder.Where(val => val != i).ToArray();
                 }
             }
         }
 
-        private int BinarySearch(List<T> list, T key, int low, int high)
+        private int BinarySearch(List<T> list, decimal key, string propertyName, int low, int high)
         {
             while (low < high)
             {
                 int mid = low + (high - low) / 2;
-
-                if (Comparer<T>.Default.Compare(key, list[mid]) < 0)
-                {
+                decimal midValue = Helper.GetPropertyValue<decimal>(list[mid], propertyName); 
+             
+                if (key < midValue)
                     high = mid;
-                }
                 else
-                {
                     low = mid + 1;
-                }
             }
             return low;
         }
