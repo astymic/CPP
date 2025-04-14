@@ -276,7 +276,6 @@ namespace lb_8
             
             Count++;
             InsertionOrder.Add(NextInsertionId++);
-            //UpdateInsertionOrder();
         }
 
         public void AddLast(T data) 
@@ -293,18 +292,7 @@ namespace lb_8
            
             Count++;
             InsertionOrder.Add(NextInsertionId++);
-
-            //UpdateInsertionOrder();
         }
-
-        //private void UpdateInsertionOrder()
-        //{
-            //int[] newInsertionOrder = new int[Count];
-
-            //InsertionOrder.CopyTo(newInsertionOrder, 0);
-            //newInsertionOrder[NextInsertionId] = NextInsertionId++;
-            //InsertionOrder = newInsertionOrder;
-        //}
 
         private Node<T> GetLastNode()
         {
@@ -339,8 +327,6 @@ namespace lb_8
                 current.Next.Previous = current.Previous;
 
             Count--;
-
-            //InsertionOrder = InsertionOrder.Where(val => val != index).ToArray();
             InsertionOrder.RemoveAt(index);
 
             return deletedItem;
@@ -357,7 +343,6 @@ namespace lb_8
             }
 
             BinaryInsertionSort(list, sortBy);
-            //list.Sort((p1, p2) => p1.Price.CompareTo(p2.Price));
 
             var current = _head;
             foreach (var item in list)
@@ -369,7 +354,6 @@ namespace lb_8
 
         private void BinaryInsertionSort(List<T> list, string propertyName)
         {
-            //int[] newInsertionOrder = InsertionOrder;
             for (int i = 1; i < list.Count; i++)
             {
                 int currentInsertionValue = InsertionOrder[i];
