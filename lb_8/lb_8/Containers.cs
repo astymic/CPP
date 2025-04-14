@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using lb_8.Interfaces;
 using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 
 namespace lb_8
 {
@@ -236,7 +235,7 @@ namespace lb_8
         ContainerLinkedList()
         {
             Count = 0;
-            InsertionOrder = new int[1]; 
+            InsertionOrder = new List<int>(); 
             NextInsertionId = 0;
         }
 
@@ -244,10 +243,7 @@ namespace lb_8
         private Node<T> _head;
 
         public Node<T> First => _head;
-        public Node<T> Last
-        {
-            get => GetLastNode();
-        }
+        public Node<T> Last => GetLastNode();
         public Node<T> Next => _head.Next;
         public Node<T> Previous => _head.Previous;
         
@@ -265,29 +261,27 @@ namespace lb_8
             private set => _count = value;                
         }
         private int NextInsertionId;
-        private int[] InsertionOrder;
+        private List<int> InsertionOrder;
 
 
         public void AddFirst(T data)
         {
             Node<T> newNode = new Node<T>(data);
-            Count++;
-
             if (_head != null) 
             {
                 newNode.Next = _head;
                 _head.Previous = newNode;
             }
             _head = newNode;
+            
             Count++;
-
-            UpdateInsertionOrder();
+            InsertionOrder.Add(NextInsertionId++);
+            //UpdateInsertionOrder();
         }
 
         public void AddLast(T data) 
         {
             Node<T> newNode = new Node<T>(data);
-            Count++;
             if (_head == null) 
             {
                 _head = newNode;
@@ -296,19 +290,21 @@ namespace lb_8
             Node<T> lastNode = GetLastNode();
             lastNode.Next = newNode;
             newNode.Previous = lastNode;
+           
             Count++;
-            
-            UpdateInsertionOrder();
+            InsertionOrder.Add(NextInsertionId++);
+
+            //UpdateInsertionOrder();
         }
 
-        private void UpdateInsertionOrder()
-        {
-            int[] newInsertionOrder = new int[Count];
+        //private void UpdateInsertionOrder()
+        //{
+            //int[] newInsertionOrder = new int[Count];
 
-            InsertionOrder.CopyTo(newInsertionOrder, 0);
-            newInsertionOrder[NextInsertionId] = NextInsertionId++;
-            InsertionOrder = newInsertionOrder;
-        }
+            //InsertionOrder.CopyTo(newInsertionOrder, 0);
+            //newInsertionOrder[NextInsertionId] = NextInsertionId++;
+            //InsertionOrder = newInsertionOrder;
+        //}
 
         private Node<T> GetLastNode()
         {
@@ -344,7 +340,8 @@ namespace lb_8
 
             Count--;
 
-            InsertionOrder = InsertionOrder.Where(val => val != index).ToArray();
+            //InsertionOrder = InsertionOrder.Where(val => val != index).ToArray();
+            InsertionOrder.RemoveAt(index);
 
             return deletedItem;
         }
@@ -372,9 +369,11 @@ namespace lb_8
 
         private void BinaryInsertionSort(List<T> list, string propertyName)
         {
-            int[] newInsertionOrder = InsertionOrder;
+            //int[] newInsertionOrder = InsertionOrder;
             for (int i = 1; i < list.Count; i++)
             {
+                int currentInsertionValue = InsertionOrder[i];
+
                 T currentItem = list[i];
                 decimal currentValue = Helper.GetPropertyValue<decimal>(currentItem, propertyName);
                 int ins = BinarySearch(list, currentValue, propertyName, 0, i);
@@ -384,7 +383,8 @@ namespace lb_8
                     list.RemoveAt(i);
                     list.Insert(ins, currentItem);
 
-                    newInsertionOrder = newInsertionOrder.Where(val => val != i).ToArray();
+                    InsertionOrder.RemoveAt(i);
+                    InsertionOrder.Insert(ins, currentInsertionValue);
                 }
             }
         }
@@ -410,7 +410,7 @@ namespace lb_8
             
             string res = string.Empty;
             var current = _head;
-            while (current.Next != null)
+            while (current != null)
             {
                 res += current.Data.ToString() + "\n";
                 current = current.Next;
