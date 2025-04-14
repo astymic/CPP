@@ -124,6 +124,10 @@ namespace lb_8
         {
             return nextInsertionId;
         }
+        public int[] GetInsertionOrder()
+        {
+            return insertionOrder;
+        }
    
 
         public bool IsEmpty(bool printMessage = true)
@@ -385,6 +389,15 @@ namespace lb_8
             Count = 0;
             InsertionOrder.Clear();
             NextInsertionId = 0;
+        }
+
+        public int GetNextInsertionId()
+        {
+            return NextInsertionId;
+        }
+        public List<int> GetInsertionOrder()
+        {
+            return InsertionOrder;
         }
 
         public override string ToString()
