@@ -64,22 +64,21 @@ class Program
             {
                 PrintErrorMessage($"Error: Index out of range. {ex.Message}");
             }
-            catch (KeyNotFoundException ex) // For indexer errors (though less likely now)
+            catch (KeyNotFoundException ex) 
             {
                 PrintErrorMessage($"Error: Key (e.g., Insertion ID) not found. {ex.Message}");
             }
-            catch (ArgumentException ex) // Catches ArgumentNullException, ArgumentOutOfRangeException etc.
+            catch (ArgumentException ex) 
             {
                 PrintErrorMessage($"Argument Error: {ex.Message}");
             }
-            catch (TargetInvocationException ex) // Catches exceptions from invoked methods/properties
+            catch (TargetInvocationException ex) 
             {
-                // Try to get the most specific error message
                 Exception inner = ex.InnerException ?? ex;
-                while (inner.InnerException != null) { inner = inner.InnerException; } // Dig deeper if needed
+                while (inner.InnerException != null) { inner = inner.InnerException; } 
                 PrintErrorMessage($"Error during operation: {inner.GetType().Name} - {inner.Message}");
             }
-            catch (Exception ex) // Generic catch-all
+            catch (Exception ex) 
             {
                 PrintErrorMessage($"An unexpected error occurred: {ex.GetType().Name} - {ex.Message}");
             }
@@ -162,7 +161,6 @@ class Program
                 Console.ForegroundColor = ConsoleColor.Magenta;
                 Console.WriteLine($"\nInitializing {chosenType} container...");
                 Console.ResetColor();
-                // Clear existing containers and set the new active type
                 containerArray = null;
                 containerList = null;
                 activeContainerType = chosenType;
@@ -214,7 +212,7 @@ class Program
     }
 
 
-    // --- Action Handlers (Delegating based on activeContainerType) ---
+    // --- Action Handlers ---
 
     static void HandleAutomaticGeneration()
     {
@@ -227,12 +225,12 @@ class Program
             if (activeContainerType == ContainerType.Array)
             {
                 AutomaticGenerationArray(containerArray!, random, count);
-                DemonstrateIndexersArray(containerArray!, random); // Demonstrate specific indexers
+                DemonstrateIndexersArray(containerArray!, random); 
             }
             else // LinkedList
             {
                 AutomaticGenerationList(containerList!, random, count);
-                DemonstrateIndexersList(containerList!, random); // Demonstrate specific indexers
+                DemonstrateIndexersList(containerList!, random); 
             }
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"\nAutomatic generation of {count} elements complete for {activeContainerType} container.");
