@@ -200,7 +200,7 @@ namespace lb_8
             get => GetItemsByParameter("Name", i); 
         }
 
-        //// Price indexer
+        ////Price indexer
         //public T[] this[decimal i] 
         //{
         //    get => GetItemsByParameter("Price", i);
