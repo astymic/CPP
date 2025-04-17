@@ -35,12 +35,12 @@ class Program
                     case "1": HandleContainerSelectionAndAction(HandleAutomaticGeneration); break;
                     case "2": HandleContainerSelectionAndAction(HandleManualInput); break;
                     case "3": HandleShowContainer(); break;
-                    case "4": HandleGetElementByInsertionId(); break; 
+                    case "4": HandleGetElementByInsertionId(); break;
                     case "5": HandleGetElementByName(); break;
-                    case "6": HandleChangeItemByInsertionId(); break; 
+                    case "6": HandleChangeItemByInsertionId(); break;
                     case "7": HandleChangeItemByName(); break;
                     case "8": HandleSortContainer(); break;
-                    case "9": HandleRemoveElementByIndex(); break; 
+                    case "9": HandleRemoveElementByIndex(); break;
                     case "q":
                         Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Exiting...");
@@ -104,19 +104,19 @@ class Program
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine("#. --- ### ### ### ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("4. Get Element by Insertion ID (1-based)"); 
+        Console.WriteLine("4. Get Element by Insertion ID (1-based)");
         Console.WriteLine("5. Get Elements by Name");
         // Console.WriteLine("6. Get Elements by Price");
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine("#. --- ### ### ### ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("6. Change Item by Insertion ID (1-based)"); 
+        Console.WriteLine("6. Change Item by Insertion ID (1-based)");
         Console.WriteLine("7. Change Item by Name");
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine("#. --- ### ### ### ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("8. Sort Active Container by Price");
-        Console.WriteLine("9. Remove Element by Current Index (0-based)"); 
+        Console.WriteLine("8. Sort Active Container");
+        Console.WriteLine("9. Remove Element by Current Index (0-based)");
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine("#. --- ### ### ### ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -297,7 +297,7 @@ class Program
 
         if (int.TryParse(Console.ReadLine(), out int inputId) && inputId >= 1 && inputId <= maxId)
         {
-            int insertionId = inputId - 1; 
+            int insertionId = inputId - 1;
             IName? item = null;
             try
             {
@@ -338,7 +338,7 @@ class Program
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"\nItem Details (Insertion ID: {inputId}, Current Index: {currentIndex}):");
             Console.ResetColor();
-            DisplayItemTable(currentIndex + 1, item); 
+            DisplayItemTable(currentIndex + 1, item);
         }
         else
         {
@@ -394,10 +394,10 @@ class Program
 
             foreach (var foundItem in itemsFoundList)
             {
-                int currentIndex = FindIndexByReference(foundItem); 
+                int currentIndex = FindIndexByReference(foundItem);
                 if (currentIndex != -1)
                 {
-                    WriteDataRowByDisplayId(currentIndex + 1, foundItem, tableWidth); 
+                    WriteDataRowByDisplayId(currentIndex + 1, foundItem, tableWidth);
                 }
                 else
                 {
@@ -479,7 +479,7 @@ class Program
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\nCurrent item details:");
             Console.ResetColor();
-            DisplayItemTable(currentIndex + 1, itemToModify); 
+            DisplayItemTable(currentIndex + 1, itemToModify);
 
             ModifyProperty(itemToModify, insertionId);
         }
@@ -529,8 +529,8 @@ class Program
         }
 
         IName itemToModify;
-        int itemInsertionId = -1; 
-        int currentDisplayIndex = -1; 
+        int itemInsertionId = -1;
+        int currentDisplayIndex = -1;
 
         if (validItems.Count == 1)
         {
@@ -582,7 +582,7 @@ class Program
                 if (itemToModify == null) { PrintErrorMessage("Failed to re-acquire selected item by current index."); return; }
 
                 itemInsertionId = GetInsertionIdForItem(itemToModify);
-                currentDisplayIndex = chosenCurrentIndex; 
+                currentDisplayIndex = chosenCurrentIndex;
 
                 if (itemInsertionId == -1) { PrintErrorMessage("Could not determine insertion ID for the chosen item."); return; }
             }
@@ -599,8 +599,8 @@ class Program
         // Modify the selected item
         if (currentDisplayIndex != -1 && itemToModify != null)
         {
-            DisplayItemTable(currentDisplayIndex + 1, itemToModify); 
-            ModifyProperty(itemToModify, itemInsertionId); 
+            DisplayItemTable(currentDisplayIndex + 1, itemToModify);
+            ModifyProperty(itemToModify, itemInsertionId);
         }
         else
         {
@@ -611,28 +611,82 @@ class Program
         }
     }
 
-
     static void HandleSortContainer()
     {
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"\n--- Sorting {activeContainerType} Container by Price ---");
+        Console.WriteLine($"\n--- Sorting {activeContainerType} Container ---");
         Console.ResetColor();
         if (IsContainerEmpty(out int currentCount)) return;
 
-        if (currentCount > 0)
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("Select sort parameter:");
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("1. Sort by Name");
+        Console.WriteLine("2. Sort by Price");
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.Write("Enter choice (1 or 2): ");
+        Console.ResetColor();
+
+        string? sortChoice = Console.ReadLine()?.Trim();
+        string sortParameter;
+        Action? sortAction = null;
+
+        switch (sortChoice)
         {
-            if (activeContainerType == ContainerType.Array)
+            case "1":
+                sortParameter = "Name";
+                Console.WriteLine("\nSorting by Name...");
+                if (activeContainerType == ContainerType.Array)
+                {
+                    if (containerArray == null) { PrintErrorMessage("Array container is null."); return; }
+                    sortAction = containerArray.SortByName;
+                }
+                else // LinkedList
+                {
+                    if (containerList == null) { PrintErrorMessage("LinkedList container is null."); return; }
+                    sortAction = () => containerList.Sort("Name");
+                }
+                break;
+
+            case "2":
+                sortParameter = "Price";
+                Console.WriteLine("\nSorting by Price...");
+                if (activeContainerType == ContainerType.Array)
+                {
+                    if (containerArray == null) { PrintErrorMessage("Array container is null."); return; }
+                    sortAction = containerArray.SortByPrice; 
+                }
+                else // LinkedList
+                {
+                    if (containerList == null) { PrintErrorMessage("LinkedList container is null."); return; }
+                    sortAction = () => containerList.Sort("Price");
+                }
+                break;
+
+            default:
+                PrintErrorMessage("Invalid sort choice.");
+                return; 
+        }
+
+        if (sortAction != null)
+        {
+            try
             {
-                containerArray!.Sort();
+                sortAction.Invoke();
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"Container sorted by {sortParameter}.");
+                Console.ResetColor();
+                HandleShowContainer(); 
             }
-            else // LinkedList
+            catch (Exception ex)
             {
-                containerList!.Sort("Price");
+                PrintErrorMessage($"Error during sorting by {sortParameter}: {ex.Message}");
             }
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("Container sorted.");
-            Console.ResetColor();
-            HandleShowContainer();
+        }
+        else
+        {
+            // Should not happen if logic above is correct, but as a safeguard
+            PrintErrorMessage("Sort action could not be determined.");
         }
     }
 
@@ -717,10 +771,10 @@ class Program
         if (nextId > 0)
         {
             int demoInsertionId = random.Next(nextId);
-            Console.WriteLine($"1. Accessing item by random insertion ID [{demoInsertionId + 1}]:"); 
+            Console.WriteLine($"1. Accessing item by random insertion ID [{demoInsertionId + 1}]:");
             try
             {
-                IName? itemById = container[demoInsertionId]; 
+                IName? itemById = container[demoInsertionId];
                 if (itemById != null)
                 {
                     int currentIndex = FindIndexByReference(itemById);
@@ -786,7 +840,7 @@ class Program
         }
 
         // 3. Demonstrate Insertion ID Indexer (Set)
-        int validDemoId = FindValidInsertionId(container); 
+        int validDemoId = FindValidInsertionId(container);
         if (validDemoId != -1)
         {
             Console.WriteLine($"\n3. Attempting to change item with insertion ID [{validDemoId + 1}] using property modification:");
@@ -806,7 +860,7 @@ class Program
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine($"   Property 'Name' potentially updated (check via Show Container).");
 
-                    IName? changedItem = container[validDemoId]; 
+                    IName? changedItem = container[validDemoId];
                     int changedIndex = changedItem != null ? FindIndexByReference(changedItem) : -1;
                     string changedIndexStr = changedIndex != -1 ? $"(Current Index: {changedIndex + 1})" : "";
 
@@ -846,12 +900,12 @@ class Program
 
         // 1. Demonstrate Insertion ID Indexer (Get) 
         int randomIndexList = random.Next(currentInsertionOrder.Count);
-        int demoInsertionIdList = currentInsertionOrder[randomIndexList]; 
+        int demoInsertionIdList = currentInsertionOrder[randomIndexList];
 
-        Console.WriteLine($"1. Accessing item by existing insertion ID [{demoInsertionIdList + 1}]:"); 
+        Console.WriteLine($"1. Accessing item by existing insertion ID [{demoInsertionIdList + 1}]:");
         try
         {
-            IName? itemById = container[demoInsertionIdList]; 
+            IName? itemById = container[demoInsertionIdList];
             if (itemById != null)
             {
                 int currentIndex = FindIndexByReference(itemById);
@@ -913,11 +967,11 @@ class Program
         }
 
         // 3. Demonstrate Insertion ID Indexer (Set)
-        int validDemoIdList = FindValidInsertionId(container); 
+        int validDemoIdList = FindValidInsertionId(container);
         if (validDemoIdList != -1)
         {
             Console.WriteLine($"\n3. Attempting to change item with insertion ID [{validDemoIdList + 1}] using property modification:");
-            IName? itemToModify = container[validDemoIdList]; 
+            IName? itemToModify = container[validDemoIdList];
             if (itemToModify != null)
             {
                 int currentIndex = FindIndexByReference(itemToModify);
@@ -933,7 +987,7 @@ class Program
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine($"   Property 'Name' potentially updated (check via Show Container).");
 
-                    IName? changedItem = container[validDemoIdList]; 
+                    IName? changedItem = container[validDemoIdList];
                     int changedIndex = changedItem != null ? FindIndexByReference(changedItem) : -1;
                     string changedIndexStr = changedIndex != -1 ? $"(Current Index: {changedIndex + 1})" : "";
 
@@ -1001,7 +1055,7 @@ class Program
     {
         int nextId = container.GetInsertionId();
         if (nextId <= 0) return -1;
-        for (int id = nextId - 1; id >= 0; id--) 
+        for (int id = nextId - 1; id >= 0; id--)
         {
             try
             {
@@ -1022,7 +1076,7 @@ class Program
     }
 
     // --- Property Modification Logic ---
-    static void ModifyProperty(object itemToModify, int itemInsertionId) 
+    static void ModifyProperty(object itemToModify, int itemInsertionId)
     {
         ArgumentNullException.ThrowIfNull(itemToModify);
 
@@ -1085,7 +1139,7 @@ class Program
                 int currentIndex = FindIndexByReference((IName)itemToModify);
                 if (currentIndex != -1)
                 {
-                    DisplayItemTable(currentIndex + 1, (IName)itemToModify); 
+                    DisplayItemTable(currentIndex + 1, (IName)itemToModify);
                 }
                 else
                 {
@@ -1276,12 +1330,12 @@ class Program
 
         IName?[] items = container.GetItems();
 
-        for (int i = 0; i < currentCount; i++) 
+        for (int i = 0; i < currentCount; i++)
         {
             IName? item = items[i];
             if (item == null) continue;
 
-            WriteDataRowByDisplayId(i + 1, item, tableWidth); 
+            WriteDataRowByDisplayId(i + 1, item, tableWidth);
             DrawHorizontalLine(tableWidth);
         }
     }
@@ -1298,7 +1352,7 @@ class Program
         PrintTableHeader(tableWidth);
 
         var node = container.First;
-        int i = 0; 
+        int i = 0;
 
         while (node != null)
         {
@@ -1306,7 +1360,7 @@ class Program
 
             if (item != null)
             {
-                WriteDataRowByDisplayId(i + 1, item, tableWidth); 
+                WriteDataRowByDisplayId(i + 1, item, tableWidth);
                 DrawHorizontalLine(tableWidth);
             }
             node = node.Next;
@@ -1320,12 +1374,12 @@ class Program
         if (item == null) return;
         int tableWidth = CalculateTableWidth();
         PrintTableHeader(tableWidth);
-        WriteDataRowByDisplayId(displayId, item, tableWidth); 
+        WriteDataRowByDisplayId(displayId, item, tableWidth);
         DrawHorizontalLine(tableWidth);
     }
 
     // --- Table Formatting Helpers ---
-    const int idWidth = 6; 
+    const int idWidth = 6;
     const int classWidth = 16;
     const int nameWidth = 18;
     const int priceWidth = 16;
@@ -1342,13 +1396,13 @@ class Program
     const int starWidth = 6;
     const int soilWidth = 10;
     const int infraWidth = 7;
-    const int padding = 1; 
-    const int numColumns = 17; 
+    const int padding = 1;
+    const int numColumns = 17;
 
     static int CalculateTableWidth()
     {
         int totalDataWidth = idWidth + classWidth + nameWidth + priceWidth + locationWidth + sizeWidth + typeWidth + marketValueWidth + investmentTypeWidth + floorWidth + hoaWidth + gardenWidth + poolWidth + roomsWidth + starWidth + soilWidth + infraWidth;
-        int totalPaddingWidth = numColumns * padding; 
+        int totalPaddingWidth = numColumns * padding;
 
         return totalDataWidth + totalPaddingWidth;
     }
@@ -1444,10 +1498,10 @@ class Program
         string val = value ?? "";
         if (totalWidth <= 0) return "";
 
-        val = Truncate(val, totalWidth); 
+        val = Truncate(val, totalWidth);
 
         int spaces = totalWidth - val.Length;
-        int padLeft = spaces / 2; 
+        int padLeft = spaces / 2;
 
         return val.PadLeft(padLeft + val.Length).PadRight(totalWidth);
     }
@@ -1468,7 +1522,7 @@ class Program
         if (maxLength <= 0) return "";
         if (value.Length <= maxLength) return value;
         int subLength = Math.Max(0, maxLength - 3);
-        if (subLength == 0) return "...".Substring(0, Math.Min(3, maxLength)); 
+        if (subLength == 0) return "...".Substring(0, Math.Min(3, maxLength));
         return value.Substring(0, subLength) + "...";
     }
 
@@ -1628,7 +1682,7 @@ class Program
             {
                 if (object.ReferenceEquals(currentItems[i], itemToFind))
                 {
-                    return i; 
+                    return i;
                 }
             }
         }
@@ -1640,7 +1694,7 @@ class Program
             {
                 if (object.ReferenceEquals(node.Data, itemToFind))
                 {
-                    return index; 
+                    return index;
                 }
                 node = node.Next;
                 index++;
@@ -1653,8 +1707,8 @@ class Program
     {
         if (itemToFind == null) return -1;
 
-        int index = FindIndexByReference(itemToFind); 
-        if (index == -1) return -1; 
+        int index = FindIndexByReference(itemToFind);
+        if (index == -1) return -1;
 
         try
         {
@@ -1663,7 +1717,7 @@ class Program
                 int[] order = containerArray.GetInsertionOrder();
                 if (index < order.Length)
                 {
-                    return order[index]; 
+                    return order[index];
                 }
                 else { System.Diagnostics.Debug.WriteLine($"Warning: Index {index} out of bounds for insertion Order Array (Length: {order.Length})"); }
             }
@@ -1672,7 +1726,7 @@ class Program
                 List<int> order = containerList.GetInsertionOrder();
                 if (index < order.Count)
                 {
-                    return order[index]; 
+                    return order[index];
                 }
                 else { System.Diagnostics.Debug.WriteLine($"Warning: Index {index} out of bounds for insertion Order List (Count: {order.Count})"); }
             }
@@ -1695,11 +1749,11 @@ class Program
             }
             else if (activeContainerType == ContainerType.LinkedList && containerList != null)
             {
-                return containerList[insertionId]; 
+                return containerList[insertionId];
             }
         }
         catch (IndexOutOfRangeException) { /* ID not found or invalid for container */ }
-        catch (Exception ex) { PrintErrorMessage($"Unexpected error fetching item by insertion ID {insertionId + 1}: {ex.Message}"); } 
+        catch (Exception ex) { PrintErrorMessage($"Unexpected error fetching item by insertion ID {insertionId + 1}: {ex.Message}"); }
         return null;
     }
 
@@ -1730,7 +1784,7 @@ class Program
                 return node?.Data;
             }
         }
-        return null; 
+        return null;
     }
 
 

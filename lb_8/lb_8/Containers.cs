@@ -18,6 +18,7 @@ namespace lb_8
             return default;
         }
     }
+
     
     class Container<T> where T : class, IName
     {
@@ -74,7 +75,7 @@ namespace lb_8
             return deletedObject;
         }
 
-        public void Sort()
+        public void SortByPrice()
         {
             try
             {
@@ -82,7 +83,31 @@ namespace lb_8
                 {
                     for (int j = 0; j < count - i - 1; j++)
                     {
-                        if (Helper.GetPropertyValue<decimal>(items[j], "Price") > Helper.GetPropertyValue<decimal>(items[j + 1], "Price"))
+                        if (items[j]?.CompareByPrice(items[j + 1]) > 0)
+                        {
+                            (items[j], items[j + 1]) = (items[j + 1], items[j]);
+                            (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(e.Message);
+                Console.ResetColor();
+            }
+        }
+
+        public void SortByName()
+        {
+            try
+            {
+                for (int i = 0; i < count - 1; i++)
+                {
+                    for (int j = 0; j < count - i - 1; j++)
+                    {
+                        if (items[j]?.CompareTo(items[j + 1]) > 0)
                         {
                             (items[j], items[j + 1]) = (items[j + 1], items[j]);
                             (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
@@ -352,7 +377,7 @@ namespace lb_8
                 int currentInsertionValue = InsertionOrder[i];
 
                 T currentItem = list[i];
-                decimal currentValue = Helper.GetPropertyValue<decimal>(currentItem, propertyName);
+                var currentValue = Helper.GetPropertyValue<object>(currentItem, propertyName);
                 int ins = BinarySearch(list, currentValue, propertyName, 0, i);
 
                 if (ins < i)
@@ -366,19 +391,32 @@ namespace lb_8
             }
         }
 
-        private int BinarySearch(List<T> list, decimal key, string propertyName, int low, int high)
+        private int BinarySearch(List<T> list, object? key, string propertyName, int low, int high)
         {
             while (low < high)
             {
                 int mid = low + (high - low) / 2;
-                decimal midValue = Helper.GetPropertyValue<decimal>(list[mid], propertyName); 
+                var midValue = Helper.GetPropertyValue<object>(list[mid], propertyName); 
              
-                if (key < midValue)
+                if (Compare(key, midValue) < 0)
                     high = mid;
                 else
                     low = mid + 1;
             }
             return low;
+        }
+
+        private int Compare(object? a, object? b)
+        {
+            if (a == null && b == null) return 0;
+            if (a == null) return -1;
+            if (b == null) return 1;
+
+            if (a is IComparable comparableA && b.GetType() == a.GetType())
+            {
+                return comparableA.CompareTo(b);
+            }
+            throw new InvalidOperationException("Values are not comparable");
         }
 
         // Clear Container
@@ -421,7 +459,7 @@ namespace lb_8
             {
                 var propValue = Helper.GetPropertyValue<Y>(current.Data, parameter);
                 if (propValue != null && propValue.Equals(i))
-                { 
+                {
                     values.Add(current.Data);
                 }
                 current = current.Next;
