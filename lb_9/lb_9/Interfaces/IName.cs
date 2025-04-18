@@ -1,0 +1,15 @@
+﻿namespace lb_9.Interfaces
+{
+    public interface IName : IComparable
+    {
+        string Name { get; set; }
+        decimal Price { get; set; }
+
+        int CompareTo(object obj);
+        int CompareByPrice(object obj);
+    }
+    public interface IName<T>
+    {
+        string Name { get; set; }
+    }
+}
