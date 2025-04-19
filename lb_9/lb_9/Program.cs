@@ -1348,7 +1348,6 @@ class Program
 
         PrintTableHeader(tableWidth);
 
-        var node = container.First;
         int i = 0;
 
         foreach (var item in containerList)
