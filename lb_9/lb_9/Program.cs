@@ -1329,7 +1329,7 @@ class Program
         PrintTableHeader(tableWidth);
 
         int i = 0;
-        foreach (var item in containerArray)
+        foreach (var item in container)
         {
             WriteDataRowByDisplayId(i + 1, item, tableWidth);
             DrawHorizontalLine(tableWidth);
@@ -1350,7 +1350,7 @@ class Program
 
         int i = 0;
 
-        foreach (var item in containerList)
+        foreach (var item in container)
         {
             WriteDataRowByDisplayId(i + 1, item, tableWidth);
             DrawHorizontalLine(tableWidth);
