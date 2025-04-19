@@ -2,7 +2,7 @@
 
 namespace lb_10.Classes
 {
-    class Product : IName, IName<Product>
+    class Product : IName, IName<Product>, IPrice
     {
         public string Name { get; set; }
         public decimal Price { get; set; }
@@ -36,17 +36,5 @@ namespace lb_10.Classes
             }
             return StringComparer.OrdinalIgnoreCase.Compare(this.Name, otherProduct.Name);
         }
-        
-        public int CompareByPrice(object obj) 
-        {
-            if (obj == null) return 1;
-
-            if (obj is not IName otherProduct)
-            {
-                throw new ArgumentException($"Object must be type {nameof(IName)}");
-            }
-            return this.Price.CompareTo(otherProduct.Price);
-        } 
-
     }
 }

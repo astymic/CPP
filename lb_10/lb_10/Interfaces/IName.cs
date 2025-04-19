@@ -6,7 +6,6 @@
         decimal Price { get; set; }
 
         int CompareTo(object obj);
-        int CompareByPrice(object obj);
     }
     public interface IName<T>
     {

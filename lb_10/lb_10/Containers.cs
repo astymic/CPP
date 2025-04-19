@@ -20,6 +20,24 @@ namespace lb_10
         }
     }
 
+    class PriceComparer : IComparer
+    {
+        public int Compare(object x, object y)
+        {
+            bool xHasPrice = x is IPrice;
+            bool yHasPrice = y is IPrice;
+
+            if (xHasPrice && yHasPrice)
+            {
+                return ((IPrice)x).Price.CompareTo(((IPrice)y).Price);
+            }
+
+            if (xHasPrice) return -1;
+            if (yHasPrice) return 1;
+            return 0;
+        }
+    }
+
 
 
     class Container<T> : IEnumerable<T> where T : class, IName
@@ -79,17 +97,7 @@ namespace lb_10
 
         public void SortByPrice()
         {
-            for (int i = 0; i < count - 1; i++)
-            {
-                for (int j = 0; j < count - i - 1; j++)
-                {
-                    if (items[j]?.CompareByPrice(items[j + 1]) > 0)
-                    {
-                        (items[j], items[j + 1]) = (items[j + 1], items[j]);
-                        (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
-                    }
-                }
-            }
+            Array.Sort(items, new PriceComparer());
         }
 
         public void SortByName()
@@ -247,16 +255,7 @@ namespace lb_10
         public IEnumerable<T> GetSortedByArrayPrice()
         {
             var _items = (T[])items.Clone();
-            for (int i = 0; i < count - 1; i++)
-            {
-                for (int j = 0; j < count - i - 1; j++)
-                {
-                    if (_items[j]?.CompareByPrice(_items[j + 1]) > 0)
-                    {
-                        (_items[j], _items[j + 1]) = (_items[j + 1], _items[j]);
-                    }
-                }
-            }
+            Array.Sort(_items, new PriceComparer());
             foreach (var item in _items)
             {
                 yield return item;
