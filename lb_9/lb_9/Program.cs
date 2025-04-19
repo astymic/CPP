@@ -1328,15 +1328,12 @@ class Program
 
         PrintTableHeader(tableWidth);
 
-        IName?[] items = container.GetItems();
-
-        for (int i = 0; i < currentCount; i++)
+        int i = 0;
+        foreach (var item in containerArray)
         {
-            IName? item = items[i];
-            if (item == null) continue;
-
             WriteDataRowByDisplayId(i + 1, item, tableWidth);
             DrawHorizontalLine(tableWidth);
+            i++;
         }
     }
 
@@ -1354,16 +1351,10 @@ class Program
         var node = container.First;
         int i = 0;
 
-        while (node != null)
+        foreach (var item in containerList)
         {
-            IName item = node.Data;
-
-            if (item != null)
-            {
-                WriteDataRowByDisplayId(i + 1, item, tableWidth);
-                DrawHorizontalLine(tableWidth);
-            }
-            node = node.Next;
+            WriteDataRowByDisplayId(i + 1, item, tableWidth);
+            DrawHorizontalLine(tableWidth);
             i++;
         }
     }
