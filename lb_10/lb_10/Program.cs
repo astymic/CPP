@@ -3,6 +3,8 @@ using System.Globalization;
 using System.Reflection;
 using lb_10.Classes;
 using lb_10.Interfaces;
+using System.Collections.Generic;
+
 
 namespace lb_10;
 
@@ -41,6 +43,10 @@ class Program
                     case "7": HandleChangeItemByName(); break;
                     case "8": HandleSortContainer(); break;
                     case "9": HandleRemoveElementByIndex(); break;
+                    case "10": HandleReverseGenerator(); break;
+                    case "11": HandleSublineGenerator(); break;
+                    case "12": HandleSortedPriceGenerator(); break;
+                    case "13": HandleSortedNameGenerator(); break;
                     case "q":
                         Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Exiting...");
@@ -102,21 +108,28 @@ class Program
         Console.WriteLine("2. Manual Input (Select/Switch Container)");
         Console.WriteLine("3. Show Active Container");
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("#. --- ### ### ### ---");
+        Console.WriteLine("#. --- Getters ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("4. Get Element by Insertion ID (1-based)");
         Console.WriteLine("5. Get Elements by Name");
         // Console.WriteLine("6. Get Elements by Price");
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("#. --- ### ### ### ---");
+        Console.WriteLine("#. --- Modifiers ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("6. Change Item by Insertion ID (1-based)");
         Console.WriteLine("7. Change Item by Name");
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("#. --- ### ### ### ---");
+        Console.WriteLine("#. --- Container Operations ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("8. Sort Active Container");
+        Console.WriteLine("8. Sort Active Container (In-Place)");
         Console.WriteLine("9. Remove Element by Current Index (0-based)");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("#. --- Generators (Non-Mutating Iterators) ---");
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("10. Show Elements in Reverse Order");
+        Console.WriteLine("11. Show Elements with Name Containing Substring");
+        Console.WriteLine("12. Show Elements Sorted by Price (Generator)");
+        Console.WriteLine("13. Show Elements Sorted by Name (Generator)");
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine("#. --- ### ### ### ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -277,7 +290,7 @@ class Program
         }
     }
 
-    // Still gets by Insertion ID, displays current index 
+    // Still gets by Insertion ID, displays current index
     static void HandleGetElementByInsertionId()
     {
         Console.ForegroundColor = ConsoleColor.Green;
@@ -401,7 +414,7 @@ class Program
                 }
                 else
                 {
-                    // Item was found by name indexer but couldn't be located by reference 
+                    // Item was found by name indexer but couldn't be located by reference
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     string itemStr = foundItem.ToString() ?? "N/A";
                     Console.WriteLine($"|{PadAndCenter($"Warning: Could not determine current index for item '{itemStr.Substring(0, Math.Min(20, itemStr.Length))}...'", tableWidth - 2)}|");
@@ -614,7 +627,7 @@ class Program
     static void HandleSortContainer()
     {
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"\n--- Sorting {activeContainerType} Container ---");
+        Console.WriteLine($"\n--- Sorting {activeContainerType} Container (In-Place) ---");
         Console.ResetColor();
         if (IsContainerEmpty(out int currentCount)) return;
 
@@ -654,7 +667,7 @@ class Program
                 if (activeContainerType == ContainerType.Array)
                 {
                     if (containerArray == null) { PrintErrorMessage("Array container is null."); return; }
-                    sortAction = containerArray.SortByPrice; 
+                    sortAction = containerArray.SortByPrice;
                 }
                 else // LinkedList
                 {
@@ -665,7 +678,7 @@ class Program
 
             default:
                 PrintErrorMessage("Invalid sort choice.");
-                return; 
+                return;
         }
 
         if (sortAction != null)
@@ -676,7 +689,7 @@ class Program
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine($"Container sorted by {sortParameter}.");
                 Console.ResetColor();
-                HandleShowContainer(); 
+                HandleShowContainer();
             }
             catch (Exception ex)
             {
@@ -753,6 +766,185 @@ class Program
         }
     }
 
+    // --- Generator Demonstrations ---
+
+    static void HandleReverseGenerator()
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"\n--- Generator: Items in Reverse Order ({activeContainerType} Container) ---");
+        Console.ResetColor();
+        if (IsContainerEmpty(out _)) return;
+
+        IEnumerable<IName> reversedItems;
+        if (activeContainerType == ContainerType.Array)
+        {
+            reversedItems = containerArray!.GetReverseArray();
+        }
+        else // LinkedList
+        {
+            reversedItems = containerList!.GetReverseArray();
+        }
+
+        int tableWidth = CalculateTableWidth();
+        PrintTableHeader(tableWidth);
+        int count = 0;
+        foreach (var item in reversedItems)
+        {
+            WriteDataRowByDisplayId(count + 1, item, tableWidth);
+            DrawHorizontalLine(tableWidth);
+            count++;
+        }
+        if (count == 0)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"|{PadAndCenter("(No items yielded by generator)", tableWidth - 2)}|");
+            DrawHorizontalLine(tableWidth);
+            Console.ResetColor();
+        }
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"Reverse generator yielded {count} items.");
+        Console.ResetColor();
+    }
+
+    static void HandleSublineGenerator()
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"\n--- Generator: Items with Name Containing Substring ({activeContainerType} Container) ---");
+        Console.ResetColor();
+        if (IsContainerEmpty(out _)) return;
+
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.Write("Enter substring to search for in Name: ");
+        Console.ResetColor();
+        string subline = Console.ReadLine() ?? "";
+
+        if (string.IsNullOrEmpty(subline))
+        {
+            PrintErrorMessage("Substring cannot be empty.");
+            return;
+        }
+
+        IEnumerable<IName> itemsWithSubline;
+        if (activeContainerType == ContainerType.Array)
+        {
+            itemsWithSubline = containerArray!.GetArrayWithSublineInName(subline);
+        }
+        else // LinkedList
+        {
+            itemsWithSubline = containerList!.GetArrayWithSublineInName(subline);
+        }
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"\nResults for names containing '{subline}':");
+        Console.ResetColor();
+        int tableWidth = CalculateTableWidth();
+        PrintTableHeader(tableWidth);
+        int count = 0;
+        foreach (var item in itemsWithSubline)
+        {
+            WriteDataRowByDisplayId(count + 1, item, tableWidth);
+            DrawHorizontalLine(tableWidth);
+            count++;
+        }
+        if (count == 0)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"|{PadAndCenter($"No items found with names containing '{subline}'", tableWidth - 2)}|");
+            DrawHorizontalLine(tableWidth);
+            Console.ResetColor();
+        }
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"Substring generator yielded {count} items.");
+        Console.ResetColor();
+    }
+
+    static void HandleSortedPriceGenerator()
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"\n--- Generator: Items Sorted by Price ({activeContainerType} Container) ---");
+        Console.ResetColor();
+        if (IsContainerEmpty(out _)) return;
+
+        IEnumerable<IName> sortedItems;
+        if (activeContainerType == ContainerType.Array)
+        {
+            sortedItems = containerArray!.GetSortedByArrayPrice();
+        }
+        else // LinkedList
+        {
+            sortedItems = containerList!.GetSortedByArrayPrice();
+        }
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\nItems sorted by Price (Generated Sequence):");
+        Console.ResetColor();
+        int tableWidth = CalculateTableWidth();
+        PrintTableHeader(tableWidth);
+        int count = 0;
+        foreach (var item in sortedItems)
+        {
+            if (item != null)
+            { 
+                WriteDataRowByDisplayId(count + 1, item, tableWidth);
+                DrawHorizontalLine(tableWidth);
+                count++;
+            }
+        }
+        if (count == 0)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"|{PadAndCenter("(No items yielded by generator)", tableWidth - 2)}|");
+            DrawHorizontalLine(tableWidth);
+            Console.ResetColor();
+        }
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"Sorted by Price generator yielded {count} items.");
+        Console.ResetColor();
+    }
+
+    static void HandleSortedNameGenerator()
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"\n--- Generator: Items Sorted by Name ({activeContainerType} Container) ---");
+        Console.ResetColor();
+        if (IsContainerEmpty(out _)) return;
+
+        IEnumerable<IName> sortedItems;
+        if (activeContainerType == ContainerType.Array)
+        {
+            sortedItems = containerArray!.GetSortedArrayByName();
+        }
+        else // LinkedList
+        {
+            sortedItems = containerList!.GetSortedArrayByName();
+        }
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\nItems sorted by Name (Generated Sequence):");
+        Console.ResetColor();
+        int tableWidth = CalculateTableWidth();
+        PrintTableHeader(tableWidth);
+        int count = 0;
+        foreach (var item in sortedItems)
+        {
+            if (item != null) 
+            { 
+                WriteDataRowByDisplayId(count + 1, item, tableWidth);
+                DrawHorizontalLine(tableWidth);
+                count++;
+            }
+        }
+        if (count == 0)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"|{PadAndCenter("(No items yielded by generator)", tableWidth - 2)}|");
+            DrawHorizontalLine(tableWidth);
+            Console.ResetColor();
+        }
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"Sorted by Name generator yielded {count} items.");
+        Console.ResetColor();
+    }
 
     // --- Indexer Interaction Methods ---
 
@@ -898,7 +1090,7 @@ class Program
             return;
         }
 
-        // 1. Demonstrate Insertion ID Indexer (Get) 
+        // 1. Demonstrate Insertion ID Indexer (Get)
         int randomIndexList = random.Next(currentInsertionOrder.Count);
         int demoInsertionIdList = currentInsertionOrder[randomIndexList];
 
