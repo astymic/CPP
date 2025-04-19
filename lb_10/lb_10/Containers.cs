@@ -2,6 +2,8 @@
 using lb_10.Interfaces;
 using System.Reflection;
 using System.Collections;
+using System.Runtime.CompilerServices;
+using System.Globalization;
 
 namespace lb_10
 {
@@ -245,6 +247,68 @@ namespace lb_10
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+
+        // Reverse Generator 
+        public IEnumerable<T> GetReverseArray()
+        {
+            var _items = (T[])items.Clone();
+            Array.Reverse( _items );
+            foreach (var item in _items)
+            {
+                if (item != null) yield return item;
+            }
+        }
+
+        // Substring Generator
+        public IEnumerable<T> GetArrayWithSublineInName(string subline)
+        {
+            foreach (var item in items)
+            {
+                if (item != null && item.Name.Contains(subline)) 
+                    yield return item;
+            }
+        }
+
+        // Sorted by Price Generator
+        public IEnumerable<T> GetSortedByArrayPrice()
+        {
+            var _items = (T[])items.Clone();
+            for (int i = 0; i < count - 1; i++)
+            {
+                for (int j = 0; j < count - i - 1; j++)
+                {
+                    if (_items[j]?.CompareByPrice(_items[j + 1]) > 0)
+                    {
+                        (_items[j], _items[j + 1]) = (_items[j + 1], _items[j]);
+                    }
+                }
+            }
+            foreach (var item in _items)
+            {
+                yield return item;
+            }
+        }
+
+        // Sorted by Name Generator
+        public IEnumerable<T> GetSortedArrayByName()
+        {
+            var _items = (T[])items.Clone();
+            for (int i = 0; i < count - 1; i++)
+            {
+                for (int j = 0; j < count - i - 1; j++)
+                {
+                    if (_items[j]?.CompareTo(_items[j + 1]) > 0)
+                    {
+                        (_items[j], _items[j + 1]) = (_items[j + 1], _items[j]);
+                    }
+                }
+            }
+            foreach (var item in _items)
+            {
+                yield return item;
+            }
         }
     }
 
@@ -565,6 +629,73 @@ namespace lb_10
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+
+        // Reverse Generator 
+        public IEnumerable<T> GetReverseArray()
+        {
+            var current = GetLastNode();
+            while (current != null)
+            {
+                yield return current.Data;
+                current = current.Previous;
+            }
+        }
+
+        // Substring Generator
+        public IEnumerable<T> GetArrayWithSublineInName(string subline)
+        {
+            var current = _head;
+            while (current != null)
+            {
+                if (current.Data.Name.Contains(subline))
+                { 
+                    yield return current.Data;
+                }
+                current = current.Next;
+            }
+        }
+
+
+        // Sorted by Price Generator
+        public IEnumerable<T> GetSortedByArrayPrice()
+        {
+            var current = _head;
+
+            if (current == null) yield break; 
+            List<T> list = new List<T>();
+            for (var node = current; node != null; node = node.Next)
+            {
+                list.Add(node.Data);
+            }
+
+            BinaryInsertionSort(list, "Price");
+
+            foreach (var item in list)
+            {
+                yield return item;
+            }
+        }
+
+        // Sorted by Name Generator
+        public IEnumerable<T> GetSortedArrayByName()
+        {
+            var current = _head;
+
+            if (current == null) yield break;
+            List<T> list = new List<T>();
+            for (var node = current; node != null; node = node.Next)
+            {
+                list.Add(node.Data);
+            }
+
+            BinaryInsertionSort(list, "Name");
+
+            foreach (var item in list)
+            {
+                yield return item;
+            }
         }
     }
 }
