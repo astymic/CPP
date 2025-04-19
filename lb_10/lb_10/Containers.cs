@@ -80,50 +80,22 @@ namespace lb_10
 
         public void SortByPrice()
         {
-            try
+            for (int i = 0; i < count - 1; i++)
             {
-                for (int i = 0; i < count - 1; i++)
+                for (int j = 0; j < count - i - 1; j++)
                 {
-                    for (int j = 0; j < count - i - 1; j++)
+                    if (items[j]?.CompareByPrice(items[j + 1]) > 0)
                     {
-                        if (items[j]?.CompareByPrice(items[j + 1]) > 0)
-                        {
-                            (items[j], items[j + 1]) = (items[j + 1], items[j]);
-                            (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
-                        }
+                        (items[j], items[j + 1]) = (items[j + 1], items[j]);
+                        (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
                     }
                 }
-            }
-            catch (Exception e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(e.Message);
-                Console.ResetColor();
             }
         }
 
         public void SortByName()
         {
-            try
-            {
-                for (int i = 0; i < count - 1; i++)
-                {
-                    for (int j = 0; j < count - i - 1; j++)
-                    {
-                        if (items[j]?.CompareTo(items[j + 1]) > 0)
-                        {
-                            (items[j], items[j + 1]) = (items[j + 1], items[j]);
-                            (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(e.Message);
-                Console.ResetColor();
-            }
+            Array.Sort(items);
         }
 
         public override string ToString()
@@ -295,16 +267,7 @@ namespace lb_10
         public IEnumerable<T> GetSortedArrayByName()
         {
             var _items = (T[])items.Clone();
-            for (int i = 0; i < count - 1; i++)
-            {
-                for (int j = 0; j < count - i - 1; j++)
-                {
-                    if (_items[j]?.CompareTo(_items[j + 1]) > 0)
-                    {
-                        (_items[j], _items[j + 1]) = (_items[j + 1], _items[j]);
-                    }
-                }
-            }
+            Array.Sort(_items);
             foreach (var item in _items)
             {
                 yield return item;

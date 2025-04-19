@@ -45,7 +45,7 @@ namespace lb_10.Classes
             {
                 throw new ArgumentException($"Object must be type {nameof(IName)}");
             }
-            return StringComparer.OrdinalIgnoreCase.Compare(this.Price, otherProduct.Price);
+            return this.Price.CompareTo(otherProduct.Price);
         } 
 
     }
