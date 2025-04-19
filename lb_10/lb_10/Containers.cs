@@ -2,8 +2,6 @@
 using lb_10.Interfaces;
 using System.Reflection;
 using System.Collections;
-using System.Runtime.CompilerServices;
-using System.Globalization;
 
 namespace lb_10
 {
@@ -22,7 +20,8 @@ namespace lb_10
         }
     }
 
-    
+
+
     class Container<T> : IEnumerable<T> where T : class, IName
     {
         private T?[] items;
@@ -176,6 +175,7 @@ namespace lb_10
             }
             return default;
         }
+
 
         // Insertion order indexer
         public T? this[int id] 
