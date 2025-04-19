@@ -399,12 +399,7 @@ namespace lb_10
         {
             if (_head == null) return;
 
-            List<T> list = new List<T>();
-            for (var node = _head; node != null; node = node.Next)
-            {
-                list.Add(node.Data);
-            }
-
+            List<T> list = NodeToList();
             BinaryInsertionSort(list, sortBy);
 
             var current = _head;
@@ -415,7 +410,19 @@ namespace lb_10
             }
         }
 
-        private void BinaryInsertionSort(List<T> list, string propertyName)
+        public List<T> NodeToList()
+        {
+            List<T> list = new List<T>();
+
+            for (var node = _head; node != null; node = node.Next)
+            {
+                list.Add(node.Data);
+            }
+
+            return list;
+        }
+
+        private void BinaryInsertionSort(List<T> list, string propertyName, bool ChangeMainNode = true)
         {
             for (int i = 1; i < list.Count; i++)
             {
@@ -430,8 +437,11 @@ namespace lb_10
                     list.RemoveAt(i);
                     list.Insert(ins, currentItem);
 
-                    InsertionOrder.RemoveAt(i);
-                    InsertionOrder.Insert(ins, currentInsertionValue);
+                    if (ChangeMainNode)
+                    { 
+                        InsertionOrder.RemoveAt(i);
+                        InsertionOrder.Insert(ins, currentInsertionValue);
+                    }
                 }
             }
         }
@@ -624,16 +634,10 @@ namespace lb_10
         // Sorted by Price Generator
         public IEnumerable<T> GetSortedByArrayPrice()
         {
-            var current = _head;
+            if (_head == null) yield break;
+            List<T> list = NodeToList();
 
-            if (current == null) yield break; 
-            List<T> list = new List<T>();
-            for (var node = current; node != null; node = node.Next)
-            {
-                list.Add(node.Data);
-            }
-
-            BinaryInsertionSort(list, "Price");
+            BinaryInsertionSort(list, "Price", false);
 
             foreach (var item in list)
             {
@@ -644,16 +648,10 @@ namespace lb_10
         // Sorted by Name Generator
         public IEnumerable<T> GetSortedArrayByName()
         {
-            var current = _head;
+            if (_head == null) yield break;
+            List<T> list = NodeToList();
 
-            if (current == null) yield break;
-            List<T> list = new List<T>();
-            for (var node = current; node != null; node = node.Next)
-            {
-                list.Add(node.Data);
-            }
-
-            BinaryInsertionSort(list, "Name");
+            BinaryInsertionSort(list, "Name", false);
 
             foreach (var item in list)
             {
