@@ -7,6 +7,7 @@ using lb_11.Interfaces;
 using lb_11.Classes;
 using System.Reflection;
 using System.Reflection.PortableExecutable;
+using System.ComponentModel;
 
 namespace lb_11;
 
@@ -18,6 +19,7 @@ public static class ContainerSerializer
         using BinaryWriter writer = new BinaryWriter(stream);
 
         int count;
+        string containerType;
         IEnumerable<IName> _container;
         
         switch (container)
@@ -25,15 +27,18 @@ public static class ContainerSerializer
             case Container<IName> array:
                 count = array.GetCount();
                 _container = array;
+                containerType = typeof(Container<IName>).Name;
                 break;
             case ContainerLinkedList<IName> linkedList:
                 count = linkedList.GetCount();
                 _container = linkedList;
+                containerType = typeof(Container<IName>).ToString();
                 break;
             default:
                 throw new ArgumentException("Container is None. Please select a container.");
         }
 
+        writer.Write(containerType);
         writer.Write(count);
         
         foreach (var item in _container)
@@ -66,12 +71,25 @@ public static class ContainerSerializer
 
     public static IEnumerable<IName?> DeserializeContainer(string name)
     {
-        using FileStream stream = new FileStream($"{name}.bin", FileMode.Open);
+        string filePath = $"{name}.bin";
+        if (!File.Exists(filePath)) throw new FileNotFoundException($"File '{filePath}' doesn't exist");
+
+        using FileStream stream = new FileStream(filePath, FileMode.Open);
         using BinaryReader reader = new BinaryReader(stream);
 
+        string containerType = reader.ReadString();
         int count = reader.ReadInt32();
 
-        var container = new Container<IName>();
+        var containerFactories = new Dictionary<string, Func<dynamic>>
+        {
+            { "Array", () => new Container<IName>() },
+            { "LinkedList", () => new ContainerLinkedList<IName>() },
+        };
+
+        if (!containerFactories.TryGetValue(containerType, out var containerFactory))
+            throw new InvalidDataException($"Unknown container type {containerType}");
+
+        dynamic container = containerFactory();
 
         for (int i = 0; i < count; i++)
         {

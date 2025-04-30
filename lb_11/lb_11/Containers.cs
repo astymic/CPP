@@ -494,6 +494,10 @@ namespace lb_11
         {
             return Count;
         }
+        public void Add(T data)
+        { 
+            AddLast(data); 
+        }
 
         public override string ToString()
         {
