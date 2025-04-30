@@ -2,7 +2,7 @@
 
 namespace lb_11.Classes
 {
-    class RealEstateInvestment : Product, IName<RealEstateInvestment>
+    class RealEstateInvestment : Product, IName<RealEstateInvestment>, ICustomSerializable
     {
         public string Location { get; set; }
         public decimal MarketValue { get; set; }
@@ -43,6 +43,15 @@ namespace lb_11.Classes
         public override string ToString()
         {
             return $"{base.ToString()}, Location: {Location}, Market Value: {MarketValue}, Invenstment Type: {InvestmentType}";
+        }
+
+        public void Serialize(BinaryWriter writer)
+        {
+            writer.Write(Name);
+            writer.Write(Price);
+            writer.Write(Location);
+            writer.Write(MarketValue);
+            writer.Write(InvestmentType);
         }
     }
 }

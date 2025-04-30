@@ -2,7 +2,7 @@
 
 namespace lb_11.Classes
 {
-    class Hotel : RealEstateInvestment, IName<Hotel>
+    class Hotel : RealEstateInvestment, IName<Hotel>, ICustomSerializable
     {
         public int Rooms { get; set; }
         public int StarRating { get; set; }
@@ -33,6 +33,17 @@ namespace lb_11.Classes
         public override string ToString()
         {
             return $"{base.ToString()}, There are {Rooms} Rooms, Hotel Rating: {StarRating}";
+        }
+
+        public void Serialize(BinaryWriter writer)
+        {
+            writer.Write(Name);
+            writer.Write(Price);
+            writer.Write(Location);
+            writer.Write(MarketValue);
+            writer.Write(InvestmentType);
+            writer.Write(Rooms);
+            writer.Write(StarRating);
         }
     }
 }

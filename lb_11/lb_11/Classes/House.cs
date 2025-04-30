@@ -2,7 +2,7 @@
 
 namespace lb_11.Classes
 {
-    class House : RealEstate, IName<House>
+    class House : RealEstate, IName<House>, ICustomSerializable
     {
         public double GardenSize { get; set; }
         public bool Pool { get; set; }
@@ -31,6 +31,17 @@ namespace lb_11.Classes
         public override string ToString()
         {
             return $"{base.ToString()}, Garden Size: {GardenSize}, {(Pool ? "There is" : "No")} Pool";
+        }
+
+        public void Serialize(BinaryWriter writer)
+        {
+            writer.Write(Name);
+            writer.Write(Price);
+            writer.Write(Location);
+            writer.Write(Size);
+            writer.Write(Type);
+            writer.Write(GardenSize);
+            writer.Write(Pool);
         }
     }
 }

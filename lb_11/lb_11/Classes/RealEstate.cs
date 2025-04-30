@@ -2,7 +2,7 @@
 
 namespace lb_11.Classes
 {
-    class RealEstate : Product, IName<RealEstate>
+    class RealEstate : Product, IName<RealEstate>, ICustomSerializable
     {
         public string Location { get; set; }
         public double Size { get; set; }
@@ -44,6 +44,15 @@ namespace lb_11.Classes
         public override string ToString()
         {
             return $"{base.ToString()}, Location: {Location}, Size: {Size}, Type: {Type}";
+        }
+
+        public void Serialize(BinaryWriter writer)
+        {
+            writer.Write(Name);
+            writer.Write(Price);
+            writer.Write(Location);
+            writer.Write(Size);
+            writer.Write(Type);
         }
     }
 }

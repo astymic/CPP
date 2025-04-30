@@ -2,7 +2,7 @@
 
 namespace lb_11.Classes
 {
-    class Apartment : RealEstate, IName<Apartment>
+    class Apartment : RealEstate, IName<Apartment>, ICustomSerializable
     {
         public int FloorNumber { get; set; }
         public decimal HOAFees { get; set; }
@@ -32,6 +32,17 @@ namespace lb_11.Classes
         public override string ToString()
         {
             return $"{base.ToString()}, In {FloorNumber} Floor, Homeowners Association Fee: {HOAFees}";
+        }
+
+        public void Serialize(BinaryWriter writer)
+        {
+            writer.Write(Name);
+            writer.Write(Price);
+            writer.Write(Location);
+            writer.Write(Size);
+            writer.Write(Type);
+            writer.Write(FloorNumber);
+            writer.Write(HOAFees);
         }
     }
 }

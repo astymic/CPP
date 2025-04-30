@@ -2,7 +2,7 @@
 
 namespace lb_11.Classes
 {
-    class Product : IName, IName<Product>, IPrice
+    class Product : IName, IName<Product>, IPrice, ICustomSerializable
     {
         public string Name { get; set; }
         public decimal Price { get; set; }
@@ -35,6 +35,12 @@ namespace lb_11.Classes
                 throw new ArgumentException($"Object must be type {nameof(IName)}");
             }
             return StringComparer.OrdinalIgnoreCase.Compare(this.Name, otherProduct.Name);
+        }
+
+        public void Serialize(BinaryWriter writer)
+        {
+            writer.Write(Name);
+            writer.Write(Price);
         }
     }
 }

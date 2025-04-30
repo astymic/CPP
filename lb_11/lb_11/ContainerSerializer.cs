@@ -37,81 +37,14 @@ public static class ContainerSerializer
         
         foreach (var item in _container)
         {
-            Type type = item.GetType();
-
-            writer.Write(type.Name);
-            switch (type.Name)
+            if (item is ICustomSerializable serializable)
             {
-                case "Product":
-                    var product = (Product)item;
-                    writer.Write(product.Name);
-                    writer.Write(product.Price);
-                    break;
-
-                case "RealEstate":
-                    var realEstate = (RealEstate)item;
-                    writer.Write(realEstate.Name);
-                    writer.Write(realEstate.Price);
-                    writer.Write(realEstate.Location);
-                    writer.Write(realEstate.Size);
-                    writer.Write(realEstate.Type);
-                    break;
-
-                case "RealEstateInvestment":
-                    var realEstateInvestment = (RealEstateInvestment)item;
-                    writer.Write(realEstateInvestment.Name);
-                    writer.Write(realEstateInvestment.Price);
-                    writer.Write(realEstateInvestment.Location);
-                    writer.Write(realEstateInvestment.MarketValue);
-                    writer.Write(realEstateInvestment.InvestmentType);
-                    break;
-
-                case "Apartment":
-                    var apartment = (Apartment)item;
-                    writer.Write(apartment.Name);
-                    writer.Write(apartment.Price);
-                    writer.Write(apartment.Location);
-                    writer.Write(apartment.Size);
-                    writer.Write(apartment.Type);
-                    writer.Write(apartment.FloorNumber);
-                    writer.Write(apartment.HOAFees);
-                    break;
-
-                case "House":
-                    var house = (House)item;
-                    writer.Write(house.Name);
-                    writer.Write(house.Price);
-                    writer.Write(house.Location);
-                    writer.Write(house.Size);
-                    writer.Write(house.Type);
-                    writer.Write(house.GardenSize);
-                    writer.Write(house.Pool);
-                    break;
-
-                case "Hotel":
-                    var hotel = (Hotel)item;
-                    writer.Write(hotel.Name);
-                    writer.Write(hotel.Price);
-                    writer.Write(hotel.Location);
-                    writer.Write(hotel.MarketValue);
-                    writer.Write(hotel.InvestmentType);
-                    writer.Write(hotel.Rooms);
-                    writer.Write(hotel.StarRating);
-                    break;
-
-                case "LandPlot":
-                    var landPlot = (LandPlot)item;
-                    writer.Write(landPlot.Name);
-                    writer.Write(landPlot.Price);
-                    writer.Write(landPlot.Location);
-                    writer.Write(landPlot.MarketValue);
-                    writer.Write(landPlot.InvestmentType);
-                    writer.Write(landPlot.SoilType);
-                    writer.Write(landPlot.InfrastructureAccess);
-                    break;
-
-                default:
-                    break;
+                writer.Write(item.GetType().Name);
+                serializable.Serialize(writer);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Type {item.GetType().Name} isn't serializable");
             }
         }
 
