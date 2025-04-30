@@ -11,9 +11,9 @@ namespace lb_11;
 
 public static class ContainerSerializer
 {
-    public static string SerializeContainer(object container)
+    public static string SerializeContainer(object container, string name)
     {
-        using FileStream stream = new FileStream("data.bin", FileMode.Create);
+        using FileStream stream = new FileStream($"{name}.bin", FileMode.Create);
         using BinaryWriter writer = new BinaryWriter(stream);
 
         int count;
@@ -38,7 +38,8 @@ public static class ContainerSerializer
         foreach (var item in _container)
         {
             Type type = item.GetType();
-            
+
+            writer.Write(type.Name);
             switch (type.Name)
             {
                 case "Product":
@@ -118,9 +119,9 @@ public static class ContainerSerializer
         return stream.Name;
     }
 
-    public static IEnumerable<IName?> DeserializeContainer(byte[] data)
+    public static IEnumerable<IName?> DeserializeContainer(string name)
     {
-        using FileStream stream = new FileStream("data.bin", FileMode.Open);
+        using FileStream stream = new FileStream($"{name}.bin", FileMode.Open);
         using BinaryReader reader = new BinaryReader(stream);
 
         int count = reader.ReadInt32();
@@ -214,6 +215,7 @@ public static class ContainerSerializer
             }
         }
 
+        stream.Close();
         return container;
     }
 }
