@@ -72,7 +72,7 @@ public static class ContainerSerializer
         int count = reader.ReadInt32();
 
         var container = new Container<IName>();
-        Console.WriteLine("New Try:");
+
         for (int i = 0; i < count; i++)
         {
             string typeName = reader.ReadString();

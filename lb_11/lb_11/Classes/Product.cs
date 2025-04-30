@@ -45,7 +45,7 @@ namespace lb_11.Classes
 
         public static Product Deserialize(BinaryReader reader)
         {
-            return new Product 
+            return new Product
             {
                 Name = reader.ReadString(),
                 Price = reader.ReadDecimal()
