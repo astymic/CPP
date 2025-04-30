@@ -54,5 +54,17 @@ namespace lb_11.Classes
             writer.Write(Size);
             writer.Write(Type);
         }
+
+        public static RealEstate Deserialize(BinaryReader reader)
+        {
+            return new RealEstate
+            {
+                Name = reader.ReadString(),
+                Price = reader.ReadDecimal(),
+                Location = reader.ReadString(),
+                Size = reader.ReadDouble(),
+                Type = reader.ReadString()
+            };
+        }
     }
 }

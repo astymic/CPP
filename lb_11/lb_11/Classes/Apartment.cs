@@ -44,5 +44,19 @@ namespace lb_11.Classes
             writer.Write(FloorNumber);
             writer.Write(HOAFees);
         }
+
+        public static Apartment Deserialize(BinaryReader reader)
+        {
+            return new Apartment
+            {
+                Name = reader.ReadString(),
+                Price = reader.ReadDecimal(),
+                Location = reader.ReadString(),
+                Size = reader.ReadDouble(),
+                Type = reader.ReadString(),
+                FloorNumber = reader.ReadInt32(),
+                HOAFees = reader.ReadDecimal()
+            };
+        }
     }
 }

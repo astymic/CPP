@@ -43,5 +43,19 @@ namespace lb_11.Classes
             writer.Write(GardenSize);
             writer.Write(Pool);
         }
+
+        public static House Deserialize(BinaryReader reader)
+        {
+            return new House
+            {
+                Name = reader.ReadString(),
+                Price = reader.ReadDecimal(),
+                Location = reader.ReadString(),
+                Size = reader.ReadDouble(),
+                Type = reader.ReadString(),
+                GardenSize = reader.ReadDouble(),
+                Pool = reader.ReadBoolean()
+            };
+        }
     }
 }

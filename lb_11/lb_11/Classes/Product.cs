@@ -42,5 +42,14 @@ namespace lb_11.Classes
             writer.Write(Name);
             writer.Write(Price);
         }
+
+        public static Product Deserialize(BinaryReader reader)
+        {
+            return new Product 
+            {
+                Name = reader.ReadString(),
+                Price = reader.ReadDecimal()
+            };
+        }
     }
 }

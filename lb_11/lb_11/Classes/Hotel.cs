@@ -45,5 +45,19 @@ namespace lb_11.Classes
             writer.Write(Rooms);
             writer.Write(StarRating);
         }
+
+        public static Hotel Deserialize(BinaryReader reader)
+        {
+            return new Hotel
+            {
+                Name = reader.ReadString(),
+                Price = reader.ReadDecimal(),
+                Location = reader.ReadString(),
+                MarketValue = reader.ReadDecimal(),
+                InvestmentType = reader.ReadString(),
+                Rooms = reader.ReadInt16(),
+                StarRating = reader.ReadInt16()
+            };
+        }
     }
 }

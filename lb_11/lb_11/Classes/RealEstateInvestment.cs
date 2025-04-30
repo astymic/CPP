@@ -53,5 +53,17 @@ namespace lb_11.Classes
             writer.Write(MarketValue);
             writer.Write(InvestmentType);
         }
+
+        public static RealEstateInvestment Deserialize(BinaryReader reader)
+        {
+            return new RealEstateInvestment
+            {
+                Name = reader.ReadString(),
+                Price = reader.ReadDecimal(),
+                Location = reader.ReadString(),
+                MarketValue = reader.ReadDecimal(),
+                InvestmentType = reader.ReadString()
+            };
+        }
     }
 }

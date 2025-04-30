@@ -41,5 +41,19 @@ namespace lb_11.Classes
             writer.Write(SoilType);
             writer.Write(InfrastructureAccess);
         }
+
+        public static LandPlot Deserialize(BinaryReader reader)
+        {
+            return new LandPlot
+            {
+                Name = reader.ReadString(),
+                Price = reader.ReadDecimal(),
+                Location = reader.ReadString(),
+                MarketValue = reader.ReadDecimal(),
+                InvestmentType = reader.ReadString(),
+                SoilType = reader.ReadString(),
+                InfrastructureAccess = reader.ReadBoolean(),
+            };
+        }
     }
 }
