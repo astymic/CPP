@@ -32,13 +32,13 @@ public static class ContainerSerializer
             case ContainerLinkedList<IName> linkedList:
                 count = linkedList.GetCount();
                 _container = linkedList;
-                containerType = typeof(Container<IName>).ToString();
+                containerType = typeof(Container<IName>).Name;
                 break;
             default:
                 throw new ArgumentException("Container is None. Please select a container.");
         }
 
-        writer.Write(containerType);
+        writer.Write(containerType.Split('`')[0]);
         writer.Write(count);
         
         foreach (var item in _container)
@@ -82,8 +82,8 @@ public static class ContainerSerializer
 
         var containerFactories = new Dictionary<string, Func<dynamic>>
         {
-            { "Array", () => new Container<IName>() },
-            { "LinkedList", () => new ContainerLinkedList<IName>() },
+            { "Container", () => new Container<IName>() },
+            { "ContainerLinkedList", () => new ContainerLinkedList<IName>() },
         };
 
         if (!containerFactories.TryGetValue(containerType, out var containerFactory))
