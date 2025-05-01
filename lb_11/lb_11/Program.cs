@@ -2105,7 +2105,7 @@ class Program
         }
         else if (deserializedContainer is ContainerLinkedList<IName> deserializedContainerList)
         {
-            loadedItemCount = deserializedContainerList.Count;
+            loadedItemCount = deserializedContainerList.GetCount();
         }
         else
         {
@@ -2153,7 +2153,7 @@ class Program
             {
                 containerList = _containerList;
                 containerArray = null;
-                activeContainerType = ContainerType.Array;
+                activeContainerType = ContainerType.LinkedList;
             }
 
             Console.ForegroundColor = ConsoleColor.Magenta;

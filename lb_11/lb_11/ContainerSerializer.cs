@@ -32,7 +32,7 @@ public static class ContainerSerializer
             case ContainerLinkedList<IName> linkedList:
                 count = linkedList.GetCount();
                 _container = linkedList;
-                containerType = typeof(Container<IName>).Name;
+                containerType = typeof(ContainerLinkedList<IName>).Name;
                 break;
             default:
                 throw new ArgumentException("Container is None. Please select a container.");
@@ -100,7 +100,7 @@ public static class ContainerSerializer
                 var item = deserializer(reader);
                 container.Add(item);
             }
-         }
+        }
 
         stream.Close();
         return container;

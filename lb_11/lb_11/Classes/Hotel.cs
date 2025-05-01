@@ -55,8 +55,8 @@ namespace lb_11.Classes
                 Location = reader.ReadString(),
                 MarketValue = reader.ReadDecimal(),
                 InvestmentType = reader.ReadString(),
-                Rooms = reader.ReadInt16(),
-                StarRating = reader.ReadInt16()
+                Rooms = reader.ReadInt32(),
+                StarRating = reader.ReadInt32()
             };
         }
     }
