@@ -1,19 +1,22 @@
 ﻿using lb_13.Interfaces;
+// Removed: using System.IO; for BinaryWriter/Reader
 
 namespace lb_13.Classes
 {
-    class Apartment : RealEstate, IName<Apartment>, ICustomSerializable
+    // Removed ICustomSerializable
+    class Apartment : RealEstate, IName<Apartment>
     {
         public int FloorNumber { get; set; }
         public decimal HOAFees { get; set; }
 
-        public Apartment()
+        public Apartment() : base() // Ensure base constructor is called
         {
-            FloorNumber = 0;
+            FloorNumber = 0; // Default values
             HOAFees = 0;
         }
 
-        public Apartment(int floorNumber, decimal fees)
+        // Constructor for manual creation or testing, not strictly needed for JSON deserialization if properties have setters
+        public Apartment(int floorNumber, decimal fees) : base()
         {
             if (floorNumber <= 0) throw new ValueLessThanZero("Floor number");
             if (fees < 0) throw new ValueLessThanZero("Fee");
@@ -34,29 +37,7 @@ namespace lb_13.Classes
             return $"{base.ToString()}, In {FloorNumber} Floor, Homeowners Association Fee: {HOAFees}";
         }
 
-        public void Serialize(BinaryWriter writer)
-        {
-            writer.Write(Name);
-            writer.Write(Price);
-            writer.Write(Location);
-            writer.Write(Size);
-            writer.Write(Type);
-            writer.Write(FloorNumber);
-            writer.Write(HOAFees);
-        }
-
-        public static Apartment Deserialize(BinaryReader reader)
-        {
-            return new Apartment
-            {
-                Name = reader.ReadString(),
-                Price = reader.ReadDecimal(),
-                Location = reader.ReadString(),
-                Size = reader.ReadDouble(),
-                Type = reader.ReadString(),
-                FloorNumber = reader.ReadInt32(),
-                HOAFees = reader.ReadDecimal()
-            };
-        }
+        // Removed Serialize method
+        // Removed static Deserialize method
     }
 }

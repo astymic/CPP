@@ -4,10 +4,11 @@ using System.Reflection;
 using System.Collections;
 using System;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace lb_13
 {
-    class Helper
+    public class Helper
     {
         public static V? GetPropertyValue<V>(object item, string propertyName)
         {
@@ -22,7 +23,7 @@ namespace lb_13
         }
     }
 
-    class PriceComparer : IComparer
+    public class PriceComparer : IComparer
     {
         public int Compare(object x, object y)
         {
@@ -42,7 +43,7 @@ namespace lb_13
 
 
 
-    class Container<T> : IEnumerable<T> where T : class, IName
+    public class Container<T> : IEnumerable<T> where T : class, IName
     {
         private T?[] items;
         private int[] insertionOrder;
@@ -59,6 +60,7 @@ namespace lb_13
             count = 0;
             size = 1;
             nextInsertionId = 0;
+            totalPrice = 0; 
         }
 
         public void Add(T _newObject)
@@ -97,7 +99,7 @@ namespace lb_13
 
         public T? RemoveById(int _index)
         {
-            if (_index < 0 || _index > count)
+            if (_index < 0 || _index >= count) 
                 throw new IndexOutOfRangeException();
 
             var deletedObject = items[_index]!;
@@ -107,7 +109,7 @@ namespace lb_13
                 insertionOrder[i] = insertionOrder[i + 1];
             }
             items[count - 1] = default;
-            insertionOrder[count - 1] = 0;
+            insertionOrder[count - 1] = 0; 
             count--;
 
             if (deletedObject is IPrice price)
@@ -131,11 +133,11 @@ namespace lb_13
         public override string ToString()
         {
             string res = "";
-            foreach (var item in items)
+            for (int i = 0; i < count; ++i) 
             {
-                if (item is null)
+                if (items[i] is null)
                     continue;
-                res += item.ToString() + "\n";
+                res += items[i]!.ToString() + "\n";
             }
             return res;
         }
@@ -143,7 +145,9 @@ namespace lb_13
 
         public T?[] GetItems()
         {
-            return items;
+            T?[] currentItems = new T?[count];
+            Array.Copy(items, currentItems, count);
+            return currentItems;
         }
         public int GetCount()
         {
@@ -155,14 +159,16 @@ namespace lb_13
         }
         public int[] GetInsertionOrder()
         {
-            return insertionOrder;
+            int[] currentOrder = new int[count];
+            Array.Copy(insertionOrder, currentOrder, count);
+            return currentOrder;
         }
-   
+
 
         public bool IsEmpty(bool printMessage = true)
         {
             if (count == 0)
-            { 
+            {
                 if (printMessage)
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
@@ -176,31 +182,30 @@ namespace lb_13
 
         public T[] GetItemsByParameter<Y>(string param, Y i)
         {
-            var _items = new T[count];
-            int index = 0;
-            foreach (var item in items)
+            var _items = new List<T>(); 
+            for (int k = 0; k < count; ++k) 
             {
-                if (item != null)
+                if (items[k] != null)
                 {
-                    var value = Helper.GetPropertyValue<Y>(item, param);
+                    var value = Helper.GetPropertyValue<Y>(items[k], param);
                     if (value != null && value.Equals(i))
                     {
-                        _items[index] = item;
-                        index++;
+                        _items.Add(items[k]!);
                     }
                 }
             }
-            return index == 0 ? default : _items;
+            return _items.Count == 0 ? Array.Empty<T>() : _items.ToArray();
         }
 
         public T? GetInstanceByInsertionId(int id)
         {
-            if (id < 0 | id > nextInsertionId) throw new IndexOutOfRangeException($"There is no entry number {id}");
+            if (id < 0 || id >= nextInsertionId) 
+                throw new IndexOutOfRangeException($"There is no entry number {id}");
 
             for (int j = 0; j < count; j++)
-            { 
+            {
                 if (insertionOrder[j] == id)
-                { 
+                {
                     return items[j];
                 }
             }
@@ -210,52 +215,68 @@ namespace lb_13
         public T? Find(Predicate<T> match)
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
-            return items.FirstOrDefault(item => item != null && match(item));
+            for (int i = 0; i < count; i++)
+            {
+                if (items[i] != null && match(items[i]!))
+                    return items[i];
+            }
+            return null;
         }
 
         public IEnumerable<T> FindAll(Predicate<T> match)
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
-            return items.Where(item => item != null && match(item)).Cast<T>();
+            List<T> foundItems = new List<T>();
+            for (int i = 0; i < count; i++) 
+            {
+                if (items[i] != null && match(items[i]!))
+                    foundItems.Add(items[i]!);
+            }
+            return foundItems;
         }
 
 
         // Insertion order indexer
-        public T? this[int id] 
+        public T? this[int id]
         {
             get => GetInstanceByInsertionId(id);
             set
             {
                 if (value == null) throw new ArgumentNullException(nameof(value));
 
-                T? _item = GetInstanceByInsertionId(id);
-                if (_item != null)
+                for (int j = 0; j < count; j++)
                 {
-                    _item = value;
+                    if (insertionOrder[j] == id)
+                    {
+                        if (items[j] is IPrice oldPriceItem)
+                        {
+                            totalPrice -= oldPriceItem.Price;
+                            oldPriceItem.PriceChanged -= HandlePriceChange;
+                        }
+                        items[j] = value;
+                        if (value is IPrice newPriceItem)
+                        {
+                            totalPrice += newPriceItem.Price;
+                            newPriceItem.PriceChanged += HandlePriceChange;
+                        }
+                        return;
+                    }
                 }
                 throw new IndexOutOfRangeException("Can not find element by this insertion index");
             }
         }
 
         // Name indexer
-        public T[] this[string i] 
+        public T[] this[string i]
         {
-            get => GetItemsByParameter("Name", i); 
+            get => GetItemsByParameter("Name", i);
         }
 
-        //Price indexer
-        //public T[] this[decimal i]
-        //{
-        //    get => GetItemsByParameter("Price", i);
-        //}
-
-
-        // Implemented foreach usage
         public IEnumerator<T> GetEnumerator()
         {
-            foreach (var item in items)
+            for (int i = 0; i < count; i++) 
             {
-                if (item != null) yield return item;
+                if (items[i] != null) yield return items[i]!;
             }
         }
 
@@ -268,55 +289,76 @@ namespace lb_13
         // Reverse Generator 
         public IEnumerable<T> GetReverseArray()
         {
-            var _items = (T[])items.Clone();
-            Array.Reverse( _items );
-            foreach (var item in _items)
+            for (int i = count - 1; i >= 0; i--) 
             {
-                if (item != null) yield return item;
+                if (items[i] != null) yield return items[i]!;
             }
         }
 
         // Substring Generator
         public IEnumerable<T> GetArrayWithSublineInName(string subline)
         {
-            foreach (var item in items)
+            for (int i = 0; i < count; i++) 
             {
-                if (item != null && item.Name.Contains(subline)) 
-                    yield return item;
+                if (items[i] != null && items[i]!.Name.Contains(subline))
+                    yield return items[i]!;
             }
         }
 
         // Sorted by Price Generator
         public IEnumerable<T> GetSortedByArrayPrice()
         {
-            var _items = (T[])items.Clone();
-            Array.Sort(_items, new PriceComparer());
-            foreach (var item in _items)
+            if (count == 0) yield break;
+            T?[] _itemsCopy = new T?[count];
+            Array.Copy(items, _itemsCopy, count);
+            Array.Sort(_itemsCopy, new PriceComparer());
+            foreach (var item in _itemsCopy)
             {
-                yield return item;
+                if (item != null) yield return item; 
             }
         }
 
         // Sorted by Name Generator
         public IEnumerable<T> GetSortedArrayByName()
         {
-            var _items = (T[])items.Clone();
-            Array.Sort(_items);
-            foreach (var item in _items)
+            if (count == 0) yield break;
+            T?[] _itemsCopy = new T?[count];
+            Array.Copy(items, _itemsCopy, count);
+            Array.Sort(_itemsCopy); 
+            foreach (var item in _itemsCopy)
             {
-                yield return item;
+                if (item != null) yield return item; 
+            }
+        }
+
+        public void PostDeserializeInitialize()
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (items[i] is IPrice priceItem)
+                {
+                    priceItem.PriceChanged -= HandlePriceChange; 
+                    priceItem.PriceChanged += HandlePriceChange;
+                }
             }
         }
     }
 
 
-    class ContainerLinkedList<T> : IEnumerable<T>, IEnumerator<T> where T : class, IName
+    public class ContainerLinkedList<T> : IEnumerable<T>, IEnumerator<T> where T : class, IName
     {
         public class Node<V>
         {
             public V Data { get; set; }
-            public Node<V> Next { get; set; }
-            public Node<V> Previous { get; set; }
+            public Node<V>? Next { get; set; } 
+            public Node<V>? Previous { get; set; } 
+
+            public Node() 
+            {
+                Data = default!; 
+                Next = null;
+                Previous = null;
+            }
 
             public Node(V data)
             {
@@ -326,53 +368,51 @@ namespace lb_13
             }
         }
 
-        public ContainerLinkedList()
-        {
-            _head = null;
-            _currentNode = null;
-            Count = 0;
-            InsertionOrder = new List<int>(); 
-            NextInsertionId = 0;
-        }
+        private Node<T>? _head; 
 
+        [JsonInclude]
+        private Node<T>? _currentNode; 
 
-        private Node<T> _head;
-        private Node<T> _currentNode;
+        public Node<T>? First => _head;
+        public Node<T>? Last => GetLastNode(); 
 
-        public Node<T> First => _head;
-        public Node<T> Last => GetLastNode();
-        
         private int _count;
         public int Count
         {
-            get
-            {
-                if (_count < 0)
-                {
-                    _count = 0;
-                }
-                return _count;
-            }
-            private set => _count = value;                
+            get => _count;
+            private set => _count = value;
         }
+
         private int NextInsertionId;
         private List<int> InsertionOrder;
         private decimal totalPrice;
         public decimal TotalPrice => totalPrice;
 
 
+        public ContainerLinkedList()
+        {
+            _head = null;
+            _currentNode = null;
+            Count = 0;
+            InsertionOrder = new List<int>();
+            NextInsertionId = 0;
+            totalPrice = 0; 
+        }
+
+
         public void AddFirst(T data)
         {
             Node<T> newNode = new Node<T>(data);
-            if (_head != null) 
+            if (_head != null)
             {
                 newNode.Next = _head;
                 _head.Previous = newNode;
             }
             _head = newNode;
-            
+
+            InsertionOrder.Insert(0, NextInsertionId++);
             Count++;
-            InsertionOrder.Add(NextInsertionId++);
+
 
             if (data is IPrice price)
             {
@@ -381,22 +421,22 @@ namespace lb_13
             }
         }
 
-        public void AddLast(T data) 
+        public void AddLast(T data)
         {
             Node<T> newNode = new Node<T>(data);
-            if (_head == null) 
+            if (_head == null)
             {
                 _head = newNode;
             }
             else
             {
-                Node<T> lastNode = GetLastNode();
+                Node<T> lastNode = GetLastNode()!; 
                 lastNode.Next = newNode;
                 newNode.Previous = lastNode;
             }
-            
-            Count++;
+
             InsertionOrder.Add(NextInsertionId++);
+            Count++;
 
             if (data is IPrice price)
             {
@@ -405,8 +445,9 @@ namespace lb_13
             }
         }
 
-        private Node<T> GetLastNode()
+        private Node<T>? GetLastNode()
         {
+            if (_head == null) return null;
             Node<T> node = _head;
             while (node.Next != null)
             {
@@ -425,15 +466,17 @@ namespace lb_13
 
         public T? RemoveByIndex(int index)
         {
-            int count = 0;
+            if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException(nameof(index));
+
+            int currentIdx = 0;
             var current = _head;
-            while (current != null && count < index)
+            while (current != null && currentIdx < index)
             {
                 current = current.Next;
-                count++;
+                currentIdx++;
             }
 
-            if (current == null) throw new ArgumentOutOfRangeException(nameof(index));
+            if (current == null) throw new InvalidOperationException("Failed to find node at valid index.");
 
             T? deletedItem = current.Data;
 
@@ -441,12 +484,12 @@ namespace lb_13
                 current.Previous.Next = current.Next;
             else
                 _head = current.Next;
-            
+
             if (current.Next != null)
                 current.Next.Previous = current.Previous;
 
             Count--;
-            InsertionOrder.RemoveAt(index);
+            InsertionOrder.RemoveAt(index); 
 
             if (deletedItem is IPrice price)
             {
@@ -460,12 +503,10 @@ namespace lb_13
         public List<T> NodeToList()
         {
             List<T> list = new List<T>();
-
             for (var node = _head; node != null; node = node.Next)
             {
                 list.Add(node.Data);
             }
-
             return list;
         }
 
@@ -473,7 +514,7 @@ namespace lb_13
         {
             for (int i = 1; i < list.Count; i++)
             {
-                int currentInsertionValue = InsertionOrder[i];
+                int currentInsertionValue = ChangeMainNode ? InsertionOrder[i] : -1; 
 
                 T currentItem = list[i];
                 var currentValue = Helper.GetPropertyValue<object>(currentItem, propertyName);
@@ -485,7 +526,7 @@ namespace lb_13
                     list.Insert(ins, currentItem);
 
                     if (ChangeMainNode)
-                    { 
+                    {
                         InsertionOrder.RemoveAt(i);
                         InsertionOrder.Insert(ins, currentInsertionValue);
                     }
@@ -498,8 +539,8 @@ namespace lb_13
             while (low < high)
             {
                 int mid = low + (high - low) / 2;
-                var midValue = Helper.GetPropertyValue<object>(list[mid], propertyName); 
-             
+                var midValue = Helper.GetPropertyValue<object>(list[mid], propertyName);
+
                 if (Compare(key, midValue) < 0)
                     high = mid;
                 else
@@ -510,18 +551,36 @@ namespace lb_13
 
         public void Sort(Comparison<T> comparison)
         {
-            if (_head == null || comparison == null) return;
+            if (_head == null || comparison == null || Count <= 1) return;
 
             List<T> list = NodeToList();
-            list.Sort(comparison);
+            List<int> originalInsertionIds = new List<int>(InsertionOrder); 
 
-            var current = _head;
-            foreach (var item in list)
+            var itemsWithIds = list.Zip(originalInsertionIds, (item, id) => new { Item = item, Id = id }).ToList();
+            itemsWithIds.Sort((pair1, pair2) => comparison(pair1.Item, pair2.Item));
+
+            _head = null;
+            Node<T>? currentTail = null;
+            InsertionOrder.Clear();
+
+            foreach (var pair in itemsWithIds)
             {
-                current.Data = item;
-                current = current.Next;
+                Node<T> newNode = new Node<T>(pair.Item);
+                if (_head == null)
+                {
+                    _head = newNode;
+                    currentTail = _head;
+                }
+                else
+                {
+                    currentTail!.Next = newNode;
+                    newNode.Previous = currentTail;
+                    currentTail = newNode;
+                }
+                InsertionOrder.Add(pair.Id); 
             }
         }
+
 
         private int Compare(object? a, object? b)
         {
@@ -533,16 +592,17 @@ namespace lb_13
             {
                 return comparableA.CompareTo(b);
             }
-            throw new InvalidOperationException("Values are not comparable");
+            throw new InvalidOperationException($"Values are not comparable or of different types: {a.GetType()} vs {b.GetType()}");
         }
 
-        // Clear Container
         public void Clear()
         {
             _head = null;
+            _currentNode = null; 
             Count = 0;
             InsertionOrder.Clear();
             NextInsertionId = 0;
+            totalPrice = 0;
         }
 
         public int GetNextInsertionId()
@@ -551,21 +611,21 @@ namespace lb_13
         }
         public List<int> GetInsertionOrder()
         {
-            return InsertionOrder;
+            return new List<int>(InsertionOrder); 
         }
         public int GetCount()
         {
             return Count;
         }
         public void Add(T data)
-        { 
-            AddLast(data); 
+        {
+            AddLast(data);
         }
 
         public override string ToString()
         {
             if (_head is null) return "Container is empty.";
-            
+
             string res = string.Empty;
             var current = _head;
             while (current != null)
@@ -580,7 +640,7 @@ namespace lb_13
         {
             List<T> values = new List<T>();
             var current = _head;
-            while (current != null) 
+            while (current != null)
             {
                 var propValue = Helper.GetPropertyValue<Y>(current.Data, parameter);
                 if (propValue != null && propValue.Equals(i))
@@ -589,34 +649,52 @@ namespace lb_13
                 }
                 current = current.Next;
             }
-            return values.Count == 0 ? null : values;
+            return values; 
         }
 
         public T? Find(Predicate<T> match)
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
-            return this.FirstOrDefault(item => item != null && match(item));
+            var current = _head;
+            while (current != null)
+            {
+                if (match(current.Data)) return current.Data;
+                current = current.Next;
+            }
+            return null;
         }
 
         public IEnumerable<T> FindAll(Predicate<T> match)
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
-            return this.Where(item => item != null && match(item)).Cast<T>();
+            List<T> foundItems = new List<T>();
+            var current = _head;
+            while (current != null)
+            {
+                if (match(current.Data)) foundItems.Add(current.Data);
+                current = current.Next;
+            }
+            return foundItems;
         }
 
-        // Insortion indexer
-        public T? this[int index]
+        // Insertion indexer 
+        public T? this[int insertionIdValue]
         {
             get
             {
                 var current = _head;
-                int count = 0;
-                while (current != null)
+                for (int i = 0; i < Count; ++i) 
                 {
-                    if (InsertionOrder[count] == index)
-                        return current.Data;
-                    current = current.Next;
-                    count++;
+                    if (InsertionOrder[i] == insertionIdValue)
+                    {
+                        // Need to get the i-th node
+                        Node<T>? nodeToFind = _head;
+                        for (int j = 0; j < i; ++j)
+                        {
+                            nodeToFind = nodeToFind?.Next;
+                        }
+                        return nodeToFind?.Data;
+                    }
                 }
                 return null;
             }
@@ -625,18 +703,33 @@ namespace lb_13
                 if (value == null) throw new ArgumentNullException(nameof(value));
 
                 var current = _head;
-                int count = 0;
-                while (current != null)
+                for (int i = 0; i < Count; ++i)
                 {
-                    if (InsertionOrder[count] == index)
-                    { 
-                        current.Data = value;
-                        return;
+                    if (InsertionOrder[i] == insertionIdValue)
+                    {
+                        Node<T>? nodeToChange = _head;
+                        for (int j = 0; j < i; ++j)
+                        {
+                            nodeToChange = nodeToChange?.Next;
+                        }
+                        if (nodeToChange != null)
+                        {
+                            if (nodeToChange.Data is IPrice oldPriceItem)
+                            {
+                                totalPrice -= oldPriceItem.Price;
+                                oldPriceItem.PriceChanged -= HandlePriceChange;
+                            }
+                            nodeToChange.Data = value;
+                            if (value is IPrice newPriceItem)
+                            {
+                                totalPrice += newPriceItem.Price;
+                                newPriceItem.PriceChanged += HandlePriceChange;
+                            }
+                            return;
+                        }
                     }
-                    current = current.Next;
-                    count++;
                 }
-                throw new IndexOutOfRangeException("Can not find element by this insertion index");
+                throw new IndexOutOfRangeException("Can not find element by this insertion ID value.");
             }
         }
 
@@ -661,7 +754,6 @@ namespace lb_13
             {
                 _currentNode = _currentNode.Next;
             }
-
             return _currentNode != null;
         }
 
@@ -670,13 +762,13 @@ namespace lb_13
             _currentNode = null;
         }
 
-        public void Dispose() {  }
+        public void Dispose() { } 
 
         public IEnumerator<T> GetEnumerator()
         {
             Reset();
-            return this;
-        }      
+            return this; 
+        }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
@@ -702,7 +794,7 @@ namespace lb_13
             while (current != null)
             {
                 if (current.Data.Name.Contains(subline))
-                { 
+                {
                     yield return current.Data;
                 }
                 current = current.Next;
@@ -715,9 +807,7 @@ namespace lb_13
         {
             if (_head == null) yield break;
             List<T> list = NodeToList();
-
             BinaryInsertionSort(list, "Price", false);
-
             foreach (var item in list)
             {
                 yield return item;
@@ -729,13 +819,27 @@ namespace lb_13
         {
             if (_head == null) yield break;
             List<T> list = NodeToList();
-
             BinaryInsertionSort(list, "Name", false);
-
             foreach (var item in list)
             {
                 yield return item;
             }
+        }
+
+
+        public void PostDeserializeInitialize()
+        {
+            Node<T>? current = _head;
+            while (current != null)
+            {
+                if (current.Data is IPrice priceItem)
+                {
+                    priceItem.PriceChanged -= HandlePriceChange;
+                    priceItem.PriceChanged += HandlePriceChange;
+                }
+                current = current.Next;
+            }
+            _currentNode = null;
         }
     }
 }

@@ -2,18 +2,18 @@
 
 namespace lb_13.Classes
 {
-    class LandPlot : RealEstateInvestment, IName<LandPlot>, ICustomSerializable
+    class LandPlot : RealEstateInvestment, IName<LandPlot>
     {
         public string SoilType { get; set; }
         public bool InfrastructureAccess { get; set; }
 
-        public LandPlot()
+        public LandPlot() : base()
         {
             SoilType = string.Empty;
-            InfrastructureAccess = true;
+            InfrastructureAccess = true; 
         }
 
-        public LandPlot(string soilType, bool infrastructureAccess)
+        public LandPlot(string soilType, bool infrastructureAccess) : base()
         {
             SoilType = soilType;
             InfrastructureAccess = infrastructureAccess;
@@ -29,31 +29,6 @@ namespace lb_13.Classes
         public override string ToString()
         {
             return $"{base.ToString()}, Soil Type: {SoilType}, {(InfrastructureAccess ? "Have" : "No")} Access to Infrastructure";
-        }
-
-        public void Serialize(BinaryWriter writer)
-        {
-            writer.Write(Name);
-            writer.Write(Price);
-            writer.Write(Location);
-            writer.Write(MarketValue);
-            writer.Write(InvestmentType);
-            writer.Write(SoilType);
-            writer.Write(InfrastructureAccess);
-        }
-
-        public static LandPlot Deserialize(BinaryReader reader)
-        {
-            return new LandPlot
-            {
-                Name = reader.ReadString(),
-                Price = reader.ReadDecimal(),
-                Location = reader.ReadString(),
-                MarketValue = reader.ReadDecimal(),
-                InvestmentType = reader.ReadString(),
-                SoilType = reader.ReadString(),
-                InfrastructureAccess = reader.ReadBoolean(),
-            };
         }
     }
 }

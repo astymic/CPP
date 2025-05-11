@@ -1,109 +1,96 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using lb_13.Interfaces;
-using lb_13.Classes;
-using System.Reflection;
-using System.Reflection.PortableExecutable;
-using System.ComponentModel;
 
-namespace lb_13;
-
-public static class ContainerSerializer
+namespace lb_13
 {
-    public static string SerializeContainer(object container, string name)
+    public static class ContainerSerializer
     {
-        using FileStream stream = new FileStream($"{name}.bin", FileMode.Create);
-        using BinaryWriter writer = new BinaryWriter(stream);
-
-        int count;
-        string containerType;
-        IEnumerable<IName> _container;
-        
-        switch (container)
+        private static JsonSerializerOptions GetJsonSerializerOptions(Type containerActualType)
         {
-            case Container<IName> array:
-                count = array.GetCount();
-                _container = array;
-                containerType = typeof(Container<IName>).Name;
-                break;
-            case ContainerLinkedList<IName> linkedList:
-                count = linkedList.GetCount();
-                _container = linkedList;
-                containerType = typeof(ContainerLinkedList<IName>).Name;
-                break;
-            default:
-                throw new ArgumentException("Container is None. Please select a container.");
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                IncludeFields = false, 
+            };
+
+            if (containerActualType.IsGenericType)
+            {
+                Type genericTypeDef = containerActualType.GetGenericTypeDefinition();
+                Type genericArg = containerActualType.GetGenericArguments()[0];
+
+                if (genericTypeDef == typeof(Container<>))
+                {
+                    Type converterType = typeof(ContainerJsonConverter<>).MakeGenericType(genericArg);
+                    options.Converters.Add((JsonConverter)Activator.CreateInstance(converterType)!);
+                }
+                else if (genericTypeDef == typeof(ContainerLinkedList<>))
+                {
+                    Type converterType = typeof(ContainerLinkedListJsonConverter<>).MakeGenericType(genericArg);
+                    options.Converters.Add((JsonConverter)Activator.CreateInstance(converterType)!);
+                }
+            }
+            return options;
         }
 
-        writer.Write(containerType.Split('`')[0]);
-        writer.Write(count);
-
-        foreach (var item in _container)
+        public static string SerializeContainer(object container, string name)
         {
-            if (item is ICustomSerializable serializable)
+            if (container == null)
             {
-                writer.Write(item.GetType().Name);
-                serializable.Serialize(writer);
+                throw new ArgumentNullException(nameof(container), "Container to serialize cannot be null.");
             }
-            else
-            {
-                throw new InvalidOperationException($"Type {item.GetType().Name} isn't serializable");
-            }
+
+            string filePath = $"{name}.json";
+
+            using FileStream stream = new FileStream(filePath, FileMode.Create);
+            using BinaryWriter writer = new BinaryWriter(stream);
+
+            string containerTypeFullName = container.GetType().AssemblyQualifiedName ??
+                                           throw new InvalidOperationException("Could not get AssemblyQualifiedName for container type.");
+            writer.Write(containerTypeFullName);
+            writer.Flush();
+
+            JsonSerializer.Serialize(stream, container, container.GetType(), GetJsonSerializerOptions(container.GetType()));
+
+            stream.Close();
+            return filePath;
         }
 
-        stream.Close();
-        return stream.Name;
-    }
-
-    static readonly Dictionary<string, Func<BinaryReader, IName>> Deserializers = new()
-    {
-        { "Product", reader => Product.Deserialize(reader) },
-        { "RealEstate", reader => RealEstate.Deserialize(reader) },
-        { "RealEstateInvestment", reader => RealEstateInvestment.Deserialize(reader) },
-        { "Apartment", reader => Apartment.Deserialize(reader) },
-        { "House", reader => House.Deserialize(reader) },
-        { "Hotel", reader => Hotel.Deserialize(reader) },
-        { "LandPlot", reader => LandPlot.Deserialize(reader) }
-    };
-
-    public static IEnumerable<IName?> DeserializeContainer(string name)
-    {
-        string filePath = $"{name}.bin";
-        if (!File.Exists(filePath)) throw new FileNotFoundException($"File '{filePath}' doesn't exist");
-
-        using FileStream stream = new FileStream(filePath, FileMode.Open);
-        using BinaryReader reader = new BinaryReader(stream);
-
-        string containerType = reader.ReadString();
-        int count = reader.ReadInt32();
-
-        var containerFactories = new Dictionary<string, Func<dynamic>>
+        public static IEnumerable<IName?>? DeserializeContainer(string name)
         {
-            { "Container", () => new Container<IName>() },
-            { "ContainerLinkedList", () => new ContainerLinkedList<IName>() },
-        };
-
-        if (!containerFactories.TryGetValue(containerType, out var containerFactory))
-            throw new InvalidDataException($"Unknown container type {containerType}");
-
-        dynamic container = containerFactory();
-
-        for (int i = 0; i < count; i++)
-        {
-            string typeName = reader.ReadString();
-
-            if (Deserializers.TryGetValue(typeName, out var deserializer))
+            string filePath = $"{name}.json";
+            if (!File.Exists(filePath))
             {
-                var item = deserializer(reader);
-                container.Add(item);
+                throw new FileNotFoundException($"File '{filePath}' doesn't exist.", filePath);
             }
+
+            using FileStream stream = new FileStream(filePath, FileMode.Open);
+            using BinaryReader reader = new BinaryReader(stream);
+
+            string containerTypeFullName = reader.ReadString();
+            Type? containerType = Type.GetType(containerTypeFullName);
+
+            if (containerType == null)
+            {
+                throw new InvalidDataException($"Unknown or invalid container type name found in file: {containerTypeFullName}");
+            }
+
+            object? deserializedObject = JsonSerializer.Deserialize(stream, containerType, GetJsonSerializerOptions(containerType));
+
+
+            if (deserializedObject is IEnumerable<IName> result)
+            {
+                return result;
+            }
+
+            if (deserializedObject == null && stream.Length > (stream.Position - reader.BaseStream.Position) + 10)
+            {
+                throw new InvalidOperationException($"Deserialization resulted in a null object, but stream data seemed present for type {containerType.Name}. Check JSON content and class definitions.");
+            }
+            return null;
         }
-
-        stream.Close();
-        return container;
-
     }
 }

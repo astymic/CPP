@@ -2,20 +2,20 @@
 
 namespace lb_13.Classes
 {
-    class RealEstateInvestment : Product, IName<RealEstateInvestment>, ICustomSerializable
+    class RealEstateInvestment : Product, IName<RealEstateInvestment>
     {
         public string Location { get; set; }
         public decimal MarketValue { get; set; }
         public string InvestmentType { get; set; }
 
-        public RealEstateInvestment()
+        public RealEstateInvestment() : base()
         {
             Location = string.Empty;
-            MarketValue = 0;
+            MarketValue = 0; 
             InvestmentType = string.Empty;
         }
 
-        public RealEstateInvestment(string location, decimal marketValue)
+        public RealEstateInvestment(string location, decimal marketValue) : base()
         {
             if (marketValue <= 0) throw new ValueLessThanZero("Market value");
             Location = location;
@@ -23,7 +23,7 @@ namespace lb_13.Classes
             InvestmentType = string.Empty;
         }
 
-        public RealEstateInvestment(string location, decimal marketValue, string investmentType)
+        public RealEstateInvestment(string location, decimal marketValue, string investmentType) : base()
         {
             if (marketValue <= 0) throw new ValueLessThanZero("Market value");
             Location = location;
@@ -43,27 +43,6 @@ namespace lb_13.Classes
         public override string ToString()
         {
             return $"{base.ToString()}, Location: {Location}, Market Value: {MarketValue}, Invenstment Type: {InvestmentType}";
-        }
-
-        public void Serialize(BinaryWriter writer)
-        {
-            writer.Write(Name);
-            writer.Write(Price);
-            writer.Write(Location);
-            writer.Write(MarketValue);
-            writer.Write(InvestmentType);
-        }
-
-        public static RealEstateInvestment Deserialize(BinaryReader reader)
-        {
-            return new RealEstateInvestment
-            {
-                Name = reader.ReadString(),
-                Price = reader.ReadDecimal(),
-                Location = reader.ReadString(),
-                MarketValue = reader.ReadDecimal(),
-                InvestmentType = reader.ReadString()
-            };
         }
     }
 }

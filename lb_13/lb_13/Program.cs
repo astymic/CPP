@@ -17,6 +17,7 @@ using lb_13.Interfaces;
 using Microsoft.VisualBasic;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Text.Json; 
 
 
 namespace lb_13;
@@ -48,7 +49,14 @@ class Program
         if (ReferenceEquals(x, y)) return 0;
         if (x == null) return -1;
         if (y == null) return 1;
-        return x.Price.CompareTo(y.Price);
+
+        if (x is IPrice xPrice && y is IPrice yPrice)
+        {
+            return xPrice.Price.CompareTo(yPrice.Price);
+        }
+        if (x is IPrice) return -1;
+        if (y is IPrice) return 1;
+        return 0; 
     };
 
     static void Main()
@@ -79,7 +87,7 @@ class Program
                     case "15": HandleFindAllElements(); break;
                     case "16": HandleSerializeContainer(); break;
                     case "17": HandleDeserializeContainer(); break;
-                    case "18": HandleShowTotalPrice(); break; 
+                    case "18": HandleShowTotalPrice(); break;
                     case "q":
                         Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Exiting...");
@@ -111,6 +119,10 @@ class Program
             catch (FileNotFoundException ex)
             {
                 PrintErrorMessage($"File Error: {ex.Message}");
+            }
+            catch (JsonException ex) 
+            {
+                PrintErrorMessage($"JSON Processing Error: {ex.Message}");
             }
             catch (IOException ex)
             {
@@ -180,14 +192,14 @@ class Program
         Console.WriteLine("14. Find First Element by Criteria");
         Console.WriteLine("15. Find All Elements by Criteria");
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("#. --- File Operations ---");
+        Console.WriteLine("#. --- File Operations (JSON) ---"); 
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("16. Serialize Active Container to File");
         Console.WriteLine("17. Deserialize Container from File (Replaces Active)");
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("#. --- Summary Information ---"); // New Section
+        Console.WriteLine("#. --- Summary Information ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("18. Show Total Price of Items in Active Container"); // New Option
+        Console.WriteLine("18. Show Total Price of Items in Active Container");
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine("#. --- ### ### ### ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -239,7 +251,7 @@ class Program
                 {
                     containerArray = new Container<IName>();
                 }
-                else // LinkedList
+                else 
                 {
                     containerList = new ContainerLinkedList<IName>();
                 }
@@ -334,7 +346,6 @@ class Program
         Console.ResetColor();
         if (IsContainerEmpty(out int currentCount))
         {
-            // Message printed by IsContainerEmpty
             return;
         }
 
@@ -348,7 +359,6 @@ class Program
         }
     }
 
-    // Still gets by Insertion ID, displays current index
     static void HandleGetElementByInsertionId()
     {
         Console.ForegroundColor = ConsoleColor.Green;
@@ -356,46 +366,45 @@ class Program
         Console.ResetColor();
         if (IsContainerEmpty(out _)) return;
 
-        int maxId = GetNextInsertionId();
-        if (maxId == 0)
+        int maxIdValue = GetNextInsertionId(); // This is the count of IDs assigned (0 to maxIdValue-1)
+        if (maxIdValue == 0)
         {
             PrintErrorMessage("Container is empty, no IDs to get.");
             return;
         }
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.Write($"Enter insertion ID (1 to {maxId}): "); // User sees 1-based
+        Console.Write($"Enter insertion ID (1 to {maxIdValue}): "); // User sees 1-based
         Console.ResetColor();
 
-        if (int.TryParse(Console.ReadLine(), out int inputId) && inputId >= 1 && inputId <= maxId)
+        if (int.TryParse(Console.ReadLine(), out int userInputId) && userInputId >= 1 && userInputId <= maxIdValue)
         {
-            int insertionId = inputId - 1; // Internally 0-based
+            int actualInsertionId = userInputId - 1; // Convert to 0-based for internal use
             IName? item = null;
             try
             {
                 if (activeContainerType == ContainerType.Array)
                 {
-                    item = containerArray![insertionId];
+                    item = containerArray![actualInsertionId]; // Uses 0-based insertion ID
                 }
                 else // LinkedList
                 {
-                    item = containerList![insertionId];
+                    item = containerList![actualInsertionId]; // Uses 0-based insertion ID
                 }
             }
-            catch (IndexOutOfRangeException)
+            catch (IndexOutOfRangeException) // Could be from container's indexer if ID is truly out of range
             {
-                PrintErrorMessage($"Item with insertion ID {inputId} not found or invalid for container structure.");
+                PrintErrorMessage($"Item with insertion ID {userInputId} not found or ID is invalid for current container state.");
                 return;
             }
             catch (Exception ex)
             {
-                PrintErrorMessage($"Error accessing item with insertion ID {inputId}: {ex.Message}");
+                PrintErrorMessage($"Error accessing item with insertion ID {userInputId}: {ex.Message}");
                 return;
             }
 
-
             if (item == null)
             {
-                PrintErrorMessage($"Item with insertion ID {inputId} not found (possibly removed or ID never used/valid).");
+                PrintErrorMessage($"Item with insertion ID {userInputId} not found (possibly removed or ID never used/valid).");
                 return;
             }
 
@@ -403,21 +412,21 @@ class Program
             if (currentIndex == -1)
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"\nItem Details (Insertion ID: {inputId}, Current Index: Unknown):");
+                Console.WriteLine($"\nItem Details (Insertion ID: {userInputId}, Current Index: Unknown/Not Found):");
                 Console.ResetColor();
-                DisplayItemTable(inputId, item); // Use inputId as a fallback display ID
+                DisplayItemTable(userInputId, item);
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\nItem Details (Insertion ID: {inputId}, Current Index: {currentIndex}):");
+                Console.WriteLine($"\nItem Details (Insertion ID: {userInputId}, Current Index: {currentIndex}):"); // current Index is 0-based
                 Console.ResetColor();
                 DisplayItemTable(currentIndex + 1, item); // Display with 1-based current index
             }
         }
         else
         {
-            PrintErrorMessage($"Invalid input. Please enter a valid integer ID between 1 and {maxId}.");
+            PrintErrorMessage($"Invalid input. Please enter a valid integer ID between 1 and {maxIdValue}.");
         }
     }
 
@@ -443,7 +452,7 @@ class Program
 
         if (activeContainerType == ContainerType.Array)
         {
-            IName[]? itemsFoundArray = containerArray![name]; // Uses string indexer
+            IName[]? itemsFoundArray = containerArray![name];
             if (itemsFoundArray != null)
             {
                 itemsFoundList.AddRange(itemsFoundArray.Where(i => i != null)!);
@@ -451,7 +460,7 @@ class Program
         }
         else // LinkedList
         {
-            List<IName>? itemsFoundLinkedList = containerList![name]; // Uses string indexer
+            List<IName>? itemsFoundLinkedList = containerList![name];
             if (itemsFoundLinkedList != null)
             {
                 itemsFoundList.AddRange(itemsFoundLinkedList);
@@ -472,17 +481,15 @@ class Program
                 int currentIndex = FindIndexByReference(foundItem);
                 if (currentIndex != -1)
                 {
-                    WriteDataRowByDisplayId(currentIndex + 1, foundItem, tableWidth);
+                    WriteDataRowByDisplayId(currentIndex + 1, foundItem, tableWidth); // Display with 1-based current index
                 }
                 else
                 {
-                    // Item was found by name indexer but couldn't be located by reference
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     string itemStr = foundItem.ToString() ?? "N/A";
                     Console.WriteLine($"|{PadAndCenter($"Warning: Could not determine current index for item '{itemStr.Substring(0, Math.Min(20, itemStr.Length))}...'", tableWidth - 2)}|");
                     Console.ResetColor();
-                    // Fallback: display with a generic ID (e.g., its order in the found list)
-                    WriteDataRowByDisplayId(itemsFoundList.IndexOf(foundItem) + 1, foundItem, tableWidth);
+                    WriteDataRowByDisplayId(itemsFoundList.IndexOf(foundItem) + 1, foundItem, tableWidth); // Fallback display ID
                 }
                 DrawHorizontalLine(tableWidth);
             }
@@ -502,46 +509,46 @@ class Program
         Console.ResetColor();
         if (IsContainerEmpty(out _)) return;
 
-        int maxId = GetNextInsertionId();
-        if (maxId == 0)
+        int maxIdValue = GetNextInsertionId();
+        if (maxIdValue == 0)
         {
             PrintErrorMessage("Container is empty, no IDs to modify.");
             return;
         }
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.Write($"Enter item insertion ID to modify (1 to {maxId}): "); // User sees 1-based
+        Console.Write($"Enter item insertion ID to modify (1 to {maxIdValue}): "); // User sees 1-based
         Console.ResetColor();
 
-        if (int.TryParse(Console.ReadLine(), out int inputId) && inputId >= 1 && inputId <= maxId)
+        if (int.TryParse(Console.ReadLine(), out int userInputId) && userInputId >= 1 && userInputId <= maxIdValue)
         {
-            int insertionId = inputId - 1; // Internally 0-based
+            int actualInsertionId = userInputId - 1; // Convert to 0-based
             IName? itemToModify = null;
 
             try
             {
                 if (activeContainerType == ContainerType.Array)
                 {
-                    itemToModify = containerArray![insertionId];
+                    itemToModify = containerArray![actualInsertionId];
                 }
-                else // LinkedList
+                else
                 {
-                    itemToModify = containerList![insertionId];
+                    itemToModify = containerList![actualInsertionId];
                 }
             }
             catch (IndexOutOfRangeException)
             {
-                PrintErrorMessage($"Item with insertion ID {inputId} not found or invalid for container structure.");
+                PrintErrorMessage($"Item with insertion ID {userInputId} not found or invalid for container structure.");
                 return;
             }
             catch (Exception ex)
             {
-                PrintErrorMessage($"Error accessing item with insertion ID {inputId}: {ex.Message}");
+                PrintErrorMessage($"Error accessing item with insertion ID {userInputId}: {ex.Message}");
                 return;
             }
 
             if (itemToModify == null)
             {
-                PrintErrorMessage($"Item with insertion ID {inputId} not found (possibly removed or ID never used/valid).");
+                PrintErrorMessage($"Item with insertion ID {userInputId} not found (possibly removed or ID never used/valid).");
                 return;
             }
 
@@ -549,23 +556,21 @@ class Program
             if (currentIndex == -1)
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"\nItem Details (Insertion ID: {inputId}, Current Index: Unknown):");
-                DisplayItemTable(inputId, itemToModify); // Fallback display
+                Console.WriteLine($"\nItem Details (Insertion ID: {userInputId}, Current Index: Unknown):");
+                DisplayItemTable(userInputId, itemToModify);
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("\nCurrent item details:");
                 Console.ResetColor();
-                DisplayItemTable(currentIndex + 1, itemToModify);
+                DisplayItemTable(currentIndex + 1, itemToModify); // Display 1-based current index
             }
-
-
-            ModifyProperty(itemToModify, insertionId); // Pass 0-based insertionId
+            ModifyProperty(itemToModify, actualInsertionId); // Pass 0-based insertionId
         }
         else
         {
-            PrintErrorMessage($"Invalid input. Please enter a valid integer ID between 1 and {maxId}.");
+            PrintErrorMessage($"Invalid input. Please enter a valid integer ID between 1 and {maxIdValue}.");
         }
     }
 
@@ -593,7 +598,7 @@ class Program
             IName[]? itemsFoundArray = containerArray![name];
             if (itemsFoundArray != null) validItems.AddRange(itemsFoundArray.Where(i => i != null)!);
         }
-        else // LinkedList
+        else
         {
             List<IName>? itemsFoundList = containerList![name];
             if (itemsFoundList != null) validItems.AddRange(itemsFoundList);
@@ -609,43 +614,49 @@ class Program
         }
 
         IName itemToModify;
-        int itemInsertionId = -1; // 0-based
-        int currentDisplayIndex = -1; // 0-based
+        int itemActualInsertionId = -1; // 0-based
+        int currentDisplayIndex = -1; // 0-based, for display consistency
 
         if (validItems.Count == 1)
         {
             itemToModify = validItems[0];
             currentDisplayIndex = FindIndexByReference(itemToModify);
-            itemInsertionId = GetInsertionIdForItem(itemToModify); // Get 0-based insertion ID
+            itemActualInsertionId = GetInsertionIdByReference(itemToModify);
 
-            if (itemInsertionId == -1 || currentDisplayIndex == -1) { PrintErrorMessage("Could not find ID or index for the item."); return; }
+            if (itemActualInsertionId == -1 || currentDisplayIndex == -1)
+            {
+                PrintErrorMessage("Could not find ID or index for the item. It might have been modified or removed concurrently.");
+                return;
+            }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\nFound one item (Current Index: {currentDisplayIndex + 1}, Insertion ID: {itemInsertionId + 1}):");
+            Console.WriteLine($"\nFound one item (Current Index: {currentDisplayIndex + 1}, Insertion ID: {itemActualInsertionId + 1}):"); // Display 1-based
             Console.ResetColor();
         }
-        else // Multiple items found
+        else
         {
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"\nFound {validItems.Count} items with Name '{name}'. Please choose which one to modify:");
             Console.ResetColor();
 
-            Dictionary<int, int> choiceToCurrentIndexMap = new Dictionary<int, int>();
+            Dictionary<int, (IName item, int currentIndex, int insertionId)> choiceMap = new();
 
             for (int i = 0; i < validItems.Count; i++)
             {
-                int currentItemIndex = FindIndexByReference(validItems[i]); // 0-based
-                if (currentItemIndex != -1)
+                int currentItemIndex = FindIndexByReference(validItems[i]);
+                int currentItemInsertionId = GetInsertionIdByReference(validItems[i]);
+
+                if (currentItemIndex != -1 && currentItemInsertionId != -1)
                 {
                     string itemInfo = validItems[i].ToString() ?? "N/A";
-                    Console.WriteLine($"{i + 1}. (Index: {currentItemIndex + 1}) {itemInfo}"); // Display 1-based
-                    choiceToCurrentIndexMap[i + 1] = currentItemIndex;
+                    Console.WriteLine($"{i + 1}. (Index: {currentItemIndex + 1}, InsID: {currentItemInsertionId + 1}) {itemInfo}"); // Display 1-based
+                    choiceMap[i + 1] = (validItems[i], currentItemIndex, currentItemInsertionId);
                 }
                 else
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     string itemStr = validItems[i].ToString() ?? "N/A";
-                    Console.WriteLine($"{i + 1}. (Index: ???) Could not map item - {itemStr}");
+                    Console.WriteLine($"{i + 1}. (Index/ID: ???) Could not map item - {itemStr}");
                     Console.ResetColor();
                 }
             }
@@ -654,17 +665,11 @@ class Program
             Console.Write($"Enter choice (1 to {validItems.Count}): ");
             Console.ResetColor();
 
-            if (int.TryParse(Console.ReadLine(), out int choice)
-                && choice >= 1 && choice <= validItems.Count
-                && choiceToCurrentIndexMap.TryGetValue(choice, out int chosenCurrentIndex)) // chosenCurrentIndex is 0-based
+            if (int.TryParse(Console.ReadLine(), out int choice) && choiceMap.TryGetValue(choice, out var selectedChoice))
             {
-                itemToModify = GetItemByCurrentIndex(chosenCurrentIndex);
-                if (itemToModify == null) { PrintErrorMessage("Failed to re-acquire selected item by current index."); return; }
-
-                itemInsertionId = GetInsertionIdForItem(itemToModify); // 0-based
-                currentDisplayIndex = chosenCurrentIndex; // 0-based
-
-                if (itemInsertionId == -1) { PrintErrorMessage("Could not determine insertion ID for the chosen item."); return; }
+                itemToModify = selectedChoice.item;
+                currentDisplayIndex = selectedChoice.currentIndex;
+                itemActualInsertionId = selectedChoice.insertionId;
             }
             else
             {
@@ -672,21 +677,19 @@ class Program
                 return;
             }
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\nSelected item (Current Index: {currentDisplayIndex + 1}, Insertion ID: {itemInsertionId + 1}):"); // Display 1-based
+            Console.WriteLine($"\nSelected item (Current Index: {currentDisplayIndex + 1}, Insertion ID: {itemActualInsertionId + 1}):");
             Console.ResetColor();
         }
 
-        // Modify the selected item
-        if (currentDisplayIndex != -1 && itemToModify != null)
+        if (currentDisplayIndex != -1 && itemToModify != null && itemActualInsertionId != -1)
         {
-            DisplayItemTable(currentDisplayIndex + 1, itemToModify); // Display with 1-based current index
-            ModifyProperty(itemToModify, itemInsertionId); // Pass 0-based insertionId
+            DisplayItemTable(currentDisplayIndex + 1, itemToModify);
+            ModifyProperty(itemToModify, itemActualInsertionId);
         }
         else
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("\nCould not reliably identify the selected item or its index. Modification cancelled.");
-            Console.WriteLine(itemToModify?.ToString() ?? "N/A");
+            Console.WriteLine("\nCould not reliably identify the selected item or its IDs. Modification cancelled.");
             Console.ResetColor();
         }
     }
@@ -719,12 +722,12 @@ class Program
                 if (activeContainerType == ContainerType.Array)
                 {
                     if (containerArray == null) { PrintErrorMessage("Array container is null."); return; }
-                    sortAction = () => containerArray.Sort(NameComparison); // Use new Sort with Comparison
+                    sortAction = () => containerArray.Sort(NameComparison);
                 }
-                else // LinkedList
+                else
                 {
                     if (containerList == null) { PrintErrorMessage("LinkedList container is null."); return; }
-                    sortAction = () => containerList.Sort(NameComparison); // Use new Sort with Comparison
+                    sortAction = () => containerList.Sort(NameComparison);
                 }
                 break;
 
@@ -734,12 +737,12 @@ class Program
                 if (activeContainerType == ContainerType.Array)
                 {
                     if (containerArray == null) { PrintErrorMessage("Array container is null."); return; }
-                    sortAction = () => containerArray.Sort(PriceComparison); // Use new Sort with Comparison
+                    sortAction = () => containerArray.Sort(PriceComparison);
                 }
-                else // LinkedList
+                else
                 {
                     if (containerList == null) { PrintErrorMessage("LinkedList container is null."); return; }
-                    sortAction = () => containerList.Sort(PriceComparison); // Use new Sort with Comparison
+                    sortAction = () => containerList.Sort(PriceComparison);
                 }
                 break;
 
@@ -754,9 +757,9 @@ class Program
             {
                 sortAction.Invoke();
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"Container sorted by {sortParameter}.");
+                Console.WriteLine($"Container sorted by {sortParameter}. Note: Insertion IDs remain, but item order (and thus current indices) change.");
                 Console.ResetColor();
-                HandleShowContainer(); // Show sorted container
+                HandleShowContainer();
             }
             catch (Exception ex)
             {
@@ -781,52 +784,48 @@ class Program
         Console.Write($"Enter element index to remove (0 to {currentCount - 1}): ");
         Console.ResetColor();
 
-        if (int.TryParse(Console.ReadLine(), out int index) && index >= 0 && index < currentCount)
+        if (int.TryParse(Console.ReadLine(), out int indexToRemove) && indexToRemove >= 0 && indexToRemove < currentCount)
         {
             IName? removedItem = null;
-            int removedItemInsertionId = -1; // 0-based
+            int removedItemOriginalInsertionId = -1;
 
             try
             {
-                IName? itemToRemove = GetItemByCurrentIndex(index); // Get item before removal to find its original insertion ID
-
-                if (itemToRemove != null)
+                IName? itemAboutToBeRemoved = GetItemByCurrentIndex(indexToRemove);
+                if (itemAboutToBeRemoved != null)
                 {
-                    removedItemInsertionId = GetInsertionIdForItem(itemToRemove); // Get 0-based insertion ID
+                    removedItemOriginalInsertionId = GetInsertionIdByReference(itemAboutToBeRemoved);
                 }
                 else
                 {
-                    PrintErrorMessage($"Could not retrieve item at index {index} before removal.");
-                    // Attempt removal anyway if GetItemByCurrentIndex failed but index is valid
+                    PrintErrorMessage($"Could not retrieve item at index {indexToRemove} before removal to determine its original insertion ID.");
                 }
-
 
                 if (activeContainerType == ContainerType.Array)
                 {
-                    removedItem = containerArray!.RemoveById(index);
+                    removedItem = containerArray!.RemoveById(indexToRemove);
                 }
-                else // LinkedList
+                else
                 {
-                    removedItem = containerList!.RemoveByIndex(index);
+                    removedItem = containerList!.RemoveByIndex(indexToRemove);
                 }
 
                 if (removedItem != null)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkCyan;
-                    // Display 1-based insertion ID if known
-                    string idString = removedItemInsertionId != -1 ? $"(original Insertion ID: {removedItemInsertionId + 1})" : "(original Insertion ID unknown)";
-                    Console.WriteLine($"\nElement at index {index} {idString} was removed:");
+                    string idString = removedItemOriginalInsertionId != -1 ? $"(original Insertion ID: {removedItemOriginalInsertionId + 1})" : "(original Insertion ID unknown)";
+                    Console.WriteLine($"\nElement at index {indexToRemove} {idString} was removed:");
                     Console.WriteLine(removedItem.ToString() ?? "Removed item details unavailable.");
                     Console.ResetColor();
                 }
                 else
                 {
-                    PrintErrorMessage($"Error: Failed to remove item at index {index}. Item might have been null unexpectedly or removal failed.");
+                    PrintErrorMessage($"Error: Failed to remove item at index {indexToRemove}. Item might have been null unexpectedly or removal failed.");
                 }
             }
             catch (Exception ex)
             {
-                PrintErrorMessage($"Error during removal at index {index}: {ex.Message}");
+                PrintErrorMessage($"Error during removal at index {indexToRemove}: {ex.Message}");
             }
         }
         else
@@ -849,7 +848,7 @@ class Program
         {
             reversedItems = containerArray!.GetReverseArray();
         }
-        else // LinkedList
+        else
         {
             reversedItems = containerList!.GetReverseArray();
         }
@@ -859,7 +858,7 @@ class Program
         int count = 0;
         foreach (var item in reversedItems)
         {
-            WriteDataRowByDisplayId(count + 1, item, tableWidth); // Display ID is just its order in the generated sequence
+            WriteDataRowByDisplayId(count + 1, item, tableWidth);
             DrawHorizontalLine(tableWidth);
             count++;
         }
@@ -898,7 +897,7 @@ class Program
         {
             itemsWithSubline = containerArray!.GetArrayWithSublineInName(subline);
         }
-        else // LinkedList
+        else
         {
             itemsWithSubline = containerList!.GetArrayWithSublineInName(subline);
         }
@@ -940,7 +939,7 @@ class Program
         {
             sortedItems = containerArray!.GetSortedByArrayPrice();
         }
-        else // LinkedList
+        else
         {
             sortedItems = containerList!.GetSortedByArrayPrice();
         }
@@ -984,7 +983,7 @@ class Program
         {
             sortedItems = containerArray!.GetSortedArrayByName();
         }
-        else // LinkedList
+        else
         {
             sortedItems = containerList!.GetSortedArrayByName();
         }
@@ -1016,7 +1015,7 @@ class Program
         Console.ResetColor();
     }
 
-    // --- Find Operations (New Handlers) ---
+    // --- Find Operations ---
     static void HandleFindFirstElement()
     {
         Console.ForegroundColor = ConsoleColor.Green;
@@ -1050,7 +1049,7 @@ class Program
                     break;
                 case "2":
                     decimal priceThreshold = ReadDecimal("Enter Price to find: ", 0.00001m);
-                    predicate = item => item.Price == priceThreshold;
+                    predicate = item => item.Price == priceThreshold; // Assumes item implements IPrice
                     criteriaDescription = $"Price = {priceThreshold:N2}";
                     break;
                 case "3":
@@ -1089,7 +1088,7 @@ class Program
             Console.WriteLine($"\nFirst element found matching criterion ({criteriaDescription}):");
             Console.ResetColor();
             int currentIndex = FindIndexByReference(foundItem);
-            DisplayItemTable(currentIndex != -1 ? currentIndex + 1 : 1, foundItem); // Display with current index or fallback
+            DisplayItemTable(currentIndex != -1 ? currentIndex + 1 : 1, foundItem);
         }
         else
         {
@@ -1133,7 +1132,7 @@ class Program
                     break;
                 case "2":
                     decimal priceThreshold = ReadDecimal("Enter Price to find: ", 0.00001m);
-                    predicate = item => item.Price == priceThreshold;
+                    predicate = item => item.Price == priceThreshold; // Assumes item implements IPrice
                     criteriaDescription = $"Price = {priceThreshold:N2}";
                     break;
                 case "3":
@@ -1145,7 +1144,6 @@ class Program
                 case "4":
                     string subName = ReadString("Enter substring for Name: ");
                     if (string.IsNullOrWhiteSpace(subName)) { PrintErrorMessage("Substring cannot be empty."); return; }
-                    // Case-insensitive substring search
                     predicate = item => item.Name.IndexOf(subName, StringComparison.OrdinalIgnoreCase) >= 0;
                     criteriaDescription = $"Name containing '{subName}'";
                     break;
@@ -1174,7 +1172,7 @@ class Program
 
         if (foundItemsEnumerable != null && foundItemsEnumerable.Any())
         {
-            List<IName> itemsList = foundItemsEnumerable.ToList(); // To count and iterate easily
+            List<IName> itemsList = foundItemsEnumerable.ToList();
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"\nFound {itemsList.Count} element(s) matching criterion ({criteriaDescription}):");
             Console.ResetColor();
@@ -1201,7 +1199,6 @@ class Program
 
     // --- Indexer Interaction Methods ---
 
-    // Array Container Indexer Demonstration
     static void DemonstrateIndexersArray(Container<IName> container, Random random)
     {
         Console.ForegroundColor = ConsoleColor.Yellow;
@@ -1209,33 +1206,28 @@ class Program
         Console.ResetColor();
         if (container.IsEmpty(false)) return;
 
-        int currentCount = container.GetCount();
-        int nextId = container.GetInsertionId(); // This is the *next* ID to be assigned (0-based)
+        int nextIdValue = container.GetInsertionId();
 
-        // 1. Demonstrate Insertion ID Indexer (Get)
-        if (nextId > 0) // If at least one ID has been assigned
+        if (nextIdValue > 0)
         {
-            // Try to get a valid, existing insertion ID
-            int demoInsertionId = -1;
-            IName? itemById = null;
-            List<int> currentValidInsertionIds = container.GetInsertionOrder().Take(container.GetCount()).ToList();
+            int demoActualInsertionId = -1;
+            List<int> currentValidInsertionIds = container.GetInsertionOrder().Take(container.GetCount()).Distinct().ToList();
 
             if (currentValidInsertionIds.Any())
             {
-                demoInsertionId = currentValidInsertionIds[random.Next(currentValidInsertionIds.Count)];
+                demoActualInsertionId = currentValidInsertionIds[random.Next(currentValidInsertionIds.Count)]; // 0-based
             }
 
-
-            if (demoInsertionId != -1)
+            if (demoActualInsertionId != -1)
             {
-                Console.WriteLine($"1. Accessing item by existing insertion ID [{demoInsertionId + 1}]:"); // Display 1-based
+                Console.WriteLine($"1. Accessing item by existing insertion ID [{demoActualInsertionId + 1}]:"); // Display 1-based
                 try
                 {
-                    itemById = container[demoInsertionId]; // Use 0-based ID
+                    IName? itemById = container[demoActualInsertionId];
                     if (itemById != null)
                     {
                         int currentIndex = FindIndexByReference(itemById);
-                        string indexStr = currentIndex != -1 ? $"(Current Index: {currentIndex + 1})" : ""; // Display 1-based
+                        string indexStr = currentIndex != -1 ? $"(Current Index: {currentIndex + 1})" : "";
                         Console.ForegroundColor = ConsoleColor.Cyan;
                         Console.WriteLine($"   Found {indexStr}: {itemById.ToString() ?? "N/A"}");
                         Console.ResetColor();
@@ -1243,13 +1235,13 @@ class Program
                     else
                     {
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"   Item with insertion ID {demoInsertionId + 1} not found (unexpectedly null).");
+                        Console.WriteLine($"   Item with insertion ID {demoActualInsertionId + 1} not found (unexpectedly null).");
                         Console.ResetColor();
                     }
                 }
                 catch (Exception ex)
                 {
-                    PrintErrorMessage($"   Error getting item by insertion ID {demoInsertionId + 1}: {ex.Message}");
+                    PrintErrorMessage($"   Error getting item by insertion ID {demoActualInsertionId + 1}: {ex.Message}");
                 }
             }
             else
@@ -1262,7 +1254,6 @@ class Program
             Console.WriteLine("1. No items added yet, cannot demonstrate insertion ID indexer.");
         }
 
-        // 2. Demonstrate Name Indexer (Get)
         string? demoName = FindDemoName(container.GetItems(), container.GetCount(), random);
         Console.WriteLine($"\n2. Using string indexer container[\"{demoName ?? "N/A"}\"]:");
         if (!string.IsNullOrWhiteSpace(demoName))
@@ -1301,12 +1292,11 @@ class Program
             Console.ResetColor();
         }
 
-        // 3. Demonstrate Insertion ID Indexer (Set)
-        int validDemoIdToSet = FindValidInsertionId(container); // Returns 0-based ID
-        if (validDemoIdToSet != -1)
+        int validActualIdToSet = FindValidActualInsertionId(container);
+        if (validActualIdToSet != -1)
         {
-            Console.WriteLine($"\n3. Attempting to change item with insertion ID [{validDemoIdToSet + 1}] using property modification (via indexer access):"); // Display 1-based
-            IName? itemToModify = container[validDemoIdToSet]; // Get by 0-based ID
+            Console.WriteLine($"\n3. Attempting to change item with insertion ID [{validActualIdToSet + 1}] using property modification:");
+            IName? itemToModify = container[validActualIdToSet];
             if (itemToModify != null)
             {
                 int currentIndex = FindIndexByReference(itemToModify);
@@ -1316,14 +1306,24 @@ class Program
                 Console.ResetColor();
                 try
                 {
-                    string newName = $"ChangedViaIndexer-{validDemoIdToSet + 1}";
+                    string newName = $"ChangedViaIndexer-{validActualIdToSet + 1}";
                     Console.WriteLine($"   Attempting to set Name to '{newName}'...");
-                    itemToModify.GetType().GetProperty("Name")?.SetValue(itemToModify, newName); // Modify property of retrieved item
+                    // Directly modify property of retrieved item. The indexer's 'set' is for replacing the whole item.
+                    var nameProp = itemToModify.GetType().GetProperty("Name");
+                    if (nameProp != null && nameProp.CanWrite)
+                    {
+                        nameProp.SetValue(itemToModify, newName);
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"   Property 'Name' updated.");
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"   Property 'Name' could not be written for this item type or is missing.");
+                    }
 
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"   Property 'Name' potentially updated (check via Show Container).");
 
-                    IName? changedItem = container[validDemoIdToSet]; // Re-fetch by ID
+                    IName? changedItem = container[validActualIdToSet];
                     int changedIndex = changedItem != null ? FindIndexByReference(changedItem) : -1;
                     string changedIndexStr = changedIndex != -1 ? $"(Current Index: {changedIndex + 1})" : "";
 
@@ -1334,7 +1334,7 @@ class Program
                 catch (TargetInvocationException tie) { PrintErrorMessage($"   Error modifying property: {tie.InnerException?.Message ?? tie.Message}"); }
                 catch (Exception ex) { PrintErrorMessage($"   Error modifying property or using indexer: {ex.Message}"); }
             }
-            else { Console.WriteLine($"   Could not retrieve item with insertion ID {validDemoIdToSet + 1} for modification demonstration."); }
+            else { Console.WriteLine($"   Could not retrieve item with insertion ID {validActualIdToSet + 1} for modification demonstration."); }
         }
         else
         {
@@ -1346,7 +1346,6 @@ class Program
         Console.ResetColor();
     }
 
-    // LinkedList Container Indexer Demonstration
     static void DemonstrateIndexersList(ContainerLinkedList<IName> container, Random random)
     {
         Console.ForegroundColor = ConsoleColor.Yellow;
@@ -1359,54 +1358,40 @@ class Program
             return;
         }
 
-        List<int> currentInsertionOrder = container.GetInsertionOrder();
-        if (currentInsertionOrder.Count == 0)
+        List<int> currentActualInsertionIds = container.GetInsertionOrder();
+        if (!currentActualInsertionIds.Any())
         {
             Console.WriteLine("Container has items but insertion order list is empty (unexpected). Cannot demonstrate.");
             return;
         }
 
-        // 1. Demonstrate Insertion ID Indexer (Get)
-        int demoInsertionIdList = -1;
-        if (currentInsertionOrder.Any())
-        {
-            demoInsertionIdList = currentInsertionOrder[random.Next(currentInsertionOrder.Count)]; // Get an existing 0-based ID
-        }
+        int demoActualInsertionIdList = currentActualInsertionIds[random.Next(currentActualInsertionIds.Count)]; // Get an existing 0-based actual ID
 
-        if (demoInsertionIdList != -1)
+        Console.WriteLine($"1. Accessing item by existing insertion ID [{demoActualInsertionIdList + 1}]:"); // Display 1-based
+        try
         {
-            Console.WriteLine($"1. Accessing item by existing insertion ID [{demoInsertionIdList + 1}]:"); // Display 1-based
-            try
+            IName? itemById = container[demoActualInsertionIdList];
+            if (itemById != null)
             {
-                IName? itemById = container[demoInsertionIdList]; // Use 0-based ID
-                if (itemById != null)
-                {
-                    int currentIndex = FindIndexByReference(itemById);
-                    string indexStr = currentIndex != -1 ? $"(Current Index: {currentIndex + 1})" : "";
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine($"   Found {indexStr}: {itemById.ToString() ?? "N/A"}");
-                    Console.ResetColor();
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"   Item with insertion ID {demoInsertionIdList + 1} not found (unexpectedly null).");
-                    Console.ResetColor();
-                }
+                int currentIndex = FindIndexByReference(itemById);
+                string indexStr = currentIndex != -1 ? $"(Current Index: {currentIndex + 1})" : "";
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"   Found {indexStr}: {itemById.ToString() ?? "N/A"}");
+                Console.ResetColor();
             }
-            catch (Exception ex)
+            else
             {
-                PrintErrorMessage($"   Error getting item by insertion ID {demoInsertionIdList + 1}: {ex.Message}");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"   Item with insertion ID {demoActualInsertionIdList + 1} not found (unexpectedly null).");
+                Console.ResetColor();
             }
         }
-        else
+        catch (Exception ex)
         {
-            Console.WriteLine("1. No valid insertion IDs found in current order to demonstrate get by ID.");
+            PrintErrorMessage($"   Error getting item by insertion ID {demoActualInsertionIdList + 1}: {ex.Message}");
         }
 
-
-        // 2. Demonstrate Name Indexer (Get)
-        string? demoName = FindDemoName(container, random);
+        string? demoName = FindDemoName(container, random); // Pass the IEnumerable container
         Console.WriteLine($"\n2. Using string indexer container[\"{demoName ?? "N/A"}\"]:");
         if (!string.IsNullOrWhiteSpace(demoName))
         {
@@ -1444,12 +1429,11 @@ class Program
             Console.ResetColor();
         }
 
-        // 3. Demonstrate Insertion ID Indexer (Set)
-        int validDemoIdListToSet = FindValidInsertionId(container); // Returns 0-based ID
-        if (validDemoIdListToSet != -1)
+        int validActualIdListToSet = FindValidActualInsertionId(container);
+        if (validActualIdListToSet != -1)
         {
-            Console.WriteLine($"\n3. Attempting to change item with insertion ID [{validDemoIdListToSet + 1}] using property modification (via indexer access):"); // Display 1-based
-            IName? itemToModify = container[validDemoIdListToSet]; // Get by 0-based ID
+            Console.WriteLine($"\n3. Attempting to change item with insertion ID [{validActualIdListToSet + 1}] using property modification:");
+            IName? itemToModify = container[validActualIdListToSet];
             if (itemToModify != null)
             {
                 int currentIndex = FindIndexByReference(itemToModify);
@@ -1459,14 +1443,22 @@ class Program
                 Console.ResetColor();
                 try
                 {
-                    string newName = $"ChangedViaIndexer-{validDemoIdListToSet + 1}";
+                    string newName = $"ChangedViaIndexer-{validActualIdListToSet + 1}";
                     Console.WriteLine($"   Attempting to set Name to '{newName}' using direct property modification...");
-                    itemToModify.GetType().GetProperty("Name")?.SetValue(itemToModify, newName); // Modify property
+                    var nameProp = itemToModify.GetType().GetProperty("Name");
+                    if (nameProp != null && nameProp.CanWrite)
+                    {
+                        nameProp.SetValue(itemToModify, newName);
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"   Property 'Name' updated.");
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"   Property 'Name' could not be written for this item type or is missing.");
+                    }
 
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"   Property 'Name' potentially updated (check via Show Container).");
-
-                    IName? changedItem = container[validDemoIdListToSet]; // Re-fetch
+                    IName? changedItem = container[validActualIdListToSet];
                     int changedIndex = changedItem != null ? FindIndexByReference(changedItem) : -1;
                     string changedIndexStr = changedIndex != -1 ? $"(Current Index: {changedIndex + 1})" : "";
 
@@ -1477,7 +1469,7 @@ class Program
                 catch (TargetInvocationException tie) { PrintErrorMessage($"   Error modifying property: {tie.InnerException?.Message ?? tie.Message}"); }
                 catch (Exception ex) { PrintErrorMessage($"   Error modifying property or using indexer: {ex.Message}"); }
             }
-            else { Console.WriteLine($"   Could not retrieve item with insertion ID {validDemoIdListToSet + 1} for modification demonstration."); }
+            else { Console.WriteLine($"   Could not retrieve item with insertion ID {validActualIdListToSet + 1} for modification demonstration."); }
         }
         else
         {
@@ -1492,69 +1484,54 @@ class Program
 
     static string? FindDemoName(IName?[] items, int count, Random random)
     {
-        string? demoName = null;
-        if (count > 0)
-        {
-            List<IName> validItems = items.Take(count).Where(it => it != null && !string.IsNullOrWhiteSpace(it.Name)).ToList()!;
-            if (validItems.Any())
-            {
-                demoName = validItems[random.Next(validItems.Count)].Name;
-            }
-        }
-        return demoName;
+        if (count == 0) return null;
+        List<IName> validItems = items.Take(count).Where(it => it != null && !string.IsNullOrWhiteSpace(it.Name)).ToList()!;
+        return validItems.Any() ? validItems[random.Next(validItems.Count)].Name : null;
     }
-    static string? FindDemoName(ContainerLinkedList<IName> listContainer, Random random)
+    static string? FindDemoName(IEnumerable<IName> itemsEnum, Random random)
     {
-        string? demoName = null;
-        if (listContainer.Count > 0)
-        {
-            List<IName> validItems = listContainer.Where(it => it != null && !string.IsNullOrWhiteSpace(it.Name)).ToList();
-            if (validItems.Any())
-            {
-                demoName = validItems[random.Next(validItems.Count)].Name;
-            }
-        }
-        return demoName;
+        List<IName> validItems = itemsEnum.Where(it => it != null && !string.IsNullOrWhiteSpace(it.Name)).ToList();
+        return validItems.Any() ? validItems[random.Next(validItems.Count)].Name : null;
     }
 
-    static int FindValidInsertionId(Container<IName> container)
+    // Finds a valid 0-based *actual insertion ID* that currently exists in the container
+    static int FindValidActualInsertionId(Container<IName> container)
     {
         if (container.GetCount() == 0) return -1;
-        var currentInsertionIds = container.GetInsertionOrder().Take(container.GetCount()).ToList();
-        if (currentInsertionIds.Any())
+        var currentActualIds = container.GetInsertionOrder().Take(container.GetCount()).Distinct().ToList();
+        if (currentActualIds.Any())
         {
-            for (int i = currentInsertionIds.Count - 1; i >= 0; i--)
+            // Check if items referenced by these IDs are still in the container
+            foreach (var id in currentActualIds.OrderBy(x => random.Next())) // Randomize to pick one
             {
-                int id = currentInsertionIds[i];
-                if (container[id] != null) return id; // container[id] uses the 0-based insertion ID
+                if (container[id] != null) return id; // container[id] uses the 0-based actual insertion ID
             }
         }
         return -1;
     }
 
-    static int FindValidInsertionId(ContainerLinkedList<IName> container)
+    static int FindValidActualInsertionId(ContainerLinkedList<IName> container)
     {
         if (container.Count == 0) return -1;
-        List<int> order = container.GetInsertionOrder();
+        List<int> order = container.GetInsertionOrder().Distinct().ToList();
         if (order.Any())
         {
-            for (int i = order.Count - 1; i >= 0; i--)
+            foreach (var id in order.OrderBy(x => random.Next())) // Randomize
             {
-                int id = order[i]; // This is a 0-based insertion ID
-                if (container[id] != null) return id;
+                if (container[id] != null) return id; // container[id] uses the 0-based actual insertion ID
             }
         }
         return -1;
     }
 
     // --- Property Modification Logic ---
-    static void ModifyProperty(object itemToModify, int itemInsertionId)
+    static void ModifyProperty(object itemToModify, int itemActualInsertionId) // itemActualInsertionId is 0-based
     {
         ArgumentNullException.ThrowIfNull(itemToModify);
 
         var properties = itemToModify.GetType()
                                         .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                        .Where(p => p.CanWrite && p.GetSetMethod(true) != null && p.Name != "Item") // Exclude indexers
+                                        .Where(p => p.CanWrite && p.GetSetMethod(true) != null && p.Name != "Item")
                                         .ToList();
 
         if (properties.Count == 0)
@@ -1597,26 +1574,26 @@ class Program
 
             if (!TryParseValue(newValueString, targetType, isNullable, out convertedValue))
             {
-                return; // Error message printed by TryParseValue
+                return;
             }
 
             try
             {
+                // If modifying Price, the event should be handled by the property's setter in Product class
                 selectedProperty.SetValue(itemToModify, convertedValue, null);
                 Console.ForegroundColor = ConsoleColor.Green;
-                // Display 1-based insertion ID
-                Console.WriteLine($"\nProperty '{selectedProperty.Name}' updated successfully for item (Insertion ID: {itemInsertionId + 1}).");
+                Console.WriteLine($"\nProperty '{selectedProperty.Name}' updated successfully for item (Insertion ID: {itemActualInsertionId + 1})."); // Display 1-based
                 Console.WriteLine("New item details:");
                 Console.ResetColor();
 
                 int currentIndex = FindIndexByReference((IName)itemToModify);
                 if (currentIndex != -1)
                 {
-                    DisplayItemTable(currentIndex + 1, (IName)itemToModify); // Display with 1-based current index
+                    DisplayItemTable(currentIndex + 1, (IName)itemToModify);
                 }
                 else
                 {
-                    DisplayItemTable(itemInsertionId + 1, (IName)itemToModify);
+                    DisplayItemTable(itemActualInsertionId + 1, (IName)itemToModify); // Fallback display ID
                     PrintErrorMessage("Could not determine current index after modification for display. Displayed with Insertion ID.");
                 }
             }
@@ -1644,7 +1621,7 @@ class Program
         parsedValue = null;
         if (isNullable && string.IsNullOrEmpty(input))
         {
-            return true; // Successfully parsed to null
+            return true;
         }
 
         try
@@ -1664,12 +1641,10 @@ class Program
                 TypeConverter converter = TypeDescriptor.GetConverter(targetType);
                 if (converter != null && converter.CanConvertFrom(typeof(string)))
                 {
-                    // Use InvariantCulture for consistent parsing of numbers, dates, etc.
                     parsedValue = converter.ConvertFromString(null, CultureInfo.InvariantCulture, input);
                 }
                 else
                 {
-                    // Fallback if TypeConverter is not available or cannot convert from string
                     parsedValue = Convert.ChangeType(input, targetType, CultureInfo.InvariantCulture);
                 }
             }
@@ -1703,7 +1678,7 @@ class Program
         for (int i = 0; i < count; i++)
         {
             IName newItem;
-            int typeChoice = random.Next(1, 9); // 1 to 8
+            int typeChoice = random.Next(1, 9);
             try
             {
                 switch (typeChoice)
@@ -1715,26 +1690,26 @@ class Program
                     case 5: newItem = GenerateRandomHouse(random); break;
                     case 6: newItem = GenerateRandomHotel(random); break;
                     case 7: newItem = GenerateRandomLandPlot(random); break;
-                    case 8: // Base RealEstate for variety
+                    case 8:
                         newItem = new RealEstate($"BaseRE{i}-{random.Next(1000)}",
                                                  Math.Max(0.01m, Math.Round(random.Next(5000, 20000) + (decimal)random.NextDouble(), 2)),
                                                  $"Loc{i}",
                                                  Math.Max(1.0, Math.Round(random.Next(50, 200) + random.NextDouble(), 1)),
                                                  "Base");
                         break;
-                    default: continue; // Should not happen with Next(1,9)
+                    default: continue;
                 }
                 addAction(newItem);
                 Console.Write(".");
             }
             catch (ValueLessThanZero vlzEx)
             {
-                Console.Write("V"); // Value less than zero error
+                Console.Write("V");
                 System.Diagnostics.Debug.WriteLine($"\nGeneration Validation Error: {vlzEx.Message} for type {typeChoice}. Skipped.");
             }
             catch (Exception ex)
             {
-                Console.Write("X"); // Other critical error
+                Console.Write("X");
                 System.Diagnostics.Debug.WriteLine($"\nGeneration Critical Error: Failed to create item of type {typeChoice}. {ex.GetType().Name}: {ex.Message}");
             }
         }
@@ -1748,7 +1723,8 @@ class Program
         {
             container.Add(newItem);
             Console.ForegroundColor = ConsoleColor.Green;
-            // GetInsertionId() for array returns the *next* ID (0-based), so subtract 1 for the one just added.
+            // GetInsertionId() for array returns the *next* actual ID (0-based), so subtract 1 for the one just added to get its actual ID.
+            // Display as 1-based.
             Console.WriteLine($"{newItem.GetType().Name} added successfully to Array Container (Insertion ID: {container.GetInsertionId()}).");
             Console.ResetColor();
         }
@@ -1761,7 +1737,8 @@ class Program
         {
             container.AddLast(newItem);
             Console.ForegroundColor = ConsoleColor.Green;
-            // GetNextInsertionId() for list returns the *next* ID (0-based), so subtract 1 for current.
+            // GetNextInsertionId() for list returns the *next* actual ID (0-based), so subtract 1 for current.
+            // Display as 1-based.
             Console.WriteLine($"{newItem.GetType().Name} added successfully to LinkedList Container (Insertion ID: {container.GetNextInsertionId()}).");
             Console.ResetColor();
         }
@@ -1817,17 +1794,21 @@ class Program
 
         PrintTableHeader(tableWidth);
 
-        int displayIndex = 0; // This is the current iteration index, 0-based for display
-        foreach (var item in container) // Relies on GetEnumerator which iterates over current items
+        int displayIndex = 0;
+        foreach (var item in container)
         {
-            // The displayId for showing the whole container should be its current 0-based index + 1
-            WriteDataRowByDisplayId(displayIndex + 1, item, tableWidth);
+            WriteDataRowByDisplayId(displayIndex + 1, item, tableWidth); // Display 1-based current index
             DrawHorizontalLine(tableWidth);
             displayIndex++;
         }
         if (displayIndex == 0 && currentCount > 0)
         {
             Console.WriteLine($"|{PadAndCenter("(Container might have only null items or GetEnumerator issue)", tableWidth - 2)}|");
+            DrawHorizontalLine(tableWidth);
+        }
+        if (currentCount == 0 && displayIndex == 0) // if IsEmpty was false but loop didn't run
+        {
+            Console.WriteLine($"|{PadAndCenter("(Container is reported as empty by GetEnumerator)", tableWidth - 2)}|");
             DrawHorizontalLine(tableWidth);
         }
     }
@@ -1843,17 +1824,21 @@ class Program
 
         PrintTableHeader(tableWidth);
 
-        int displayIndex = 0; // Current iteration index for display
-        foreach (var item in container) // Relies on GetEnumerator
+        int displayIndex = 0;
+        foreach (var item in container)
         {
-            WriteDataRowByDisplayId(displayIndex + 1, item, tableWidth);
+            WriteDataRowByDisplayId(displayIndex + 1, item, tableWidth); // Display 1-based current index
             DrawHorizontalLine(tableWidth);
             displayIndex++;
         }
+        if (currentCount == 0 && displayIndex == 0)
+        {
+            Console.WriteLine($"|{PadAndCenter("(Container is reported as empty by GetEnumerator)", tableWidth - 2)}|");
+            DrawHorizontalLine(tableWidth);
+        }
     }
 
-    // Displays item using 1-based displayId (can be current index+1, result order+1, or insertionId+1)
-    static void DisplayItemTable(int displayId, IName item)
+    static void DisplayItemTable(int displayId, IName item) // displayId is 1-based
     {
         if (item == null)
         {
@@ -1867,41 +1852,32 @@ class Program
     }
 
     // --- Table Formatting Helpers ---
-    const int idWidth = 6; // For display ID (current index, result order, etc.)
-    const int classWidth = 20; // Increased for longer class names like RealEstateInvestment
+    const int idWidth = 6;
+    const int classWidth = 20;
     const int nameWidth = 20;
     const int priceWidth = 16;
     const int locationWidth = 20;
     const int sizeWidth = 10;
-    const int typeWidth = 18; // Increased
+    const int typeWidth = 18;
     const int marketValueWidth = 18;
-    const int investmentTypeWidth = 20; // Increased
+    const int investmentTypeWidth = 20;
     const int floorWidth = 7;
-    const int hoaWidth = 10; // Increased for HOA Fees
-    const int gardenWidth = 12; // Increased for Garden Size
+    const int hoaWidth = 10;
+    const int gardenWidth = 12;
     const int poolWidth = 6;
     const int roomsWidth = 7;
     const int starWidth = 6;
-    const int soilWidth = 12; // Increased
+    const int soilWidth = 12;
     const int infraWidth = 7;
-    const int padding = 1; // Per column for the '|' separator
-    // Num columns: ID, Class, Name, Price, Loc, Size, Type, MktVal, InvType, Floor, HOA, Garden, Pool, Rooms, Star, Soil, Infra = 17
     const int numColumns = 17;
 
     static int CalculateTableWidth()
     {
-        // Sum of all column widths
         int totalDataWidth = idWidth + classWidth + nameWidth + priceWidth + locationWidth +
                              sizeWidth + typeWidth + marketValueWidth + investmentTypeWidth +
                              floorWidth + hoaWidth + gardenWidth + poolWidth + roomsWidth +
                              starWidth + soilWidth + infraWidth;
-        // Add one for each '|' separator (numColumns + 1 if separators are on both ends)
-        // My current implementation uses numColumns separators effectively.
-        // Each PadAndCenter adds its content. The "|" are printed outside.
-        // So it's effectively totalDataWidth + numColumns (for left padding of each cell after first) + 1 (for the final |)
-        // Simpler: each cell has its width. Total width is sum of cell widths + (numColumns + 1) for all '|'.
-        // Let's use the sum of widths and add separators
-        return totalDataWidth + (numColumns + 1); // Sum of widths + number of vertical bars
+        return totalDataWidth + (numColumns + 1);
     }
 
 
@@ -1920,8 +1896,8 @@ class Program
         Console.Write($"|{PadAndCenter("Name", nameWidth)}");
         Console.Write($"|{PadAndCenter("Price", priceWidth)}");
         Console.Write($"|{PadAndCenter("Location", locationWidth)}");
-        Console.Write($"|{PadAndCenter("Size (sq.unit)", sizeWidth)}"); // Clarified Size
-        Console.Write($"|{PadAndCenter("RE Type", typeWidth)}"); // Clarified Type
+        Console.Write($"|{PadAndCenter("Size (sq.u)", sizeWidth)}");
+        Console.Write($"|{PadAndCenter("RE Type", typeWidth)}");
         Console.Write($"|{PadAndCenter("Mkt Value", marketValueWidth)}");
         Console.Write($"|{PadAndCenter("Invest Type", investmentTypeWidth)}");
         Console.Write($"|{PadAndCenter("Floor", floorWidth)}");
@@ -1936,8 +1912,7 @@ class Program
         Console.ResetColor();
     }
 
-    // displayId is 1-based for user display
-    static void WriteDataRowByDisplayId(int displayId, object item, int tableWidth)
+    static void WriteDataRowByDisplayId(int displayId, object item, int tableWidth) // displayId is 1-based
     {
         if (item == null)
         {
@@ -1953,32 +1928,25 @@ class Program
 
         Type itemType = item.GetType();
 
-        // Get common properties from IName first
         string name = FormatString(GetPropertyValue<string>(item, "Name"));
-        string fPrice = FormatDecimal(GetPropertyValue<decimal?>(item, "Price")); // From IName
+        string fPrice = FormatDecimal(GetPropertyValue<decimal?>(item, "Price"));
 
-        // Properties specific to RealEstate or its derivatives
         string loc = FormatString(GetPropertyValue<string>(item, "Location"));
-        string fSize = FormatDouble(GetPropertyValue<double?>(item, "Size")); // RealEstate.Size
-        string reType = FormatString(GetPropertyValue<string>(item, "Type")); // RealEstate.Type
+        string fSize = FormatDouble(GetPropertyValue<double?>(item, "Size"));
+        string reType = FormatString(GetPropertyValue<string>(item, "Type"));
 
-        // Properties specific to RealEstateInvestment or its derivatives
-        string fMktVal = FormatDecimal(GetPropertyValue<decimal?>(item, "MarketValue")); // REI.MarketValue
-        string invType = FormatString(GetPropertyValue<string>(item, "InvestmentType")); // REI.InvestmentType
+        string fMktVal = FormatDecimal(GetPropertyValue<decimal?>(item, "MarketValue"));
+        string invType = FormatString(GetPropertyValue<string>(item, "InvestmentType"));
 
-        // Apartment specific
         string fFloor = FormatInt(GetPropertyValue<int?>(item, "FloorNumber"));
         string fHoa = FormatDecimal(GetPropertyValue<decimal?>(item, "HOAFees"));
 
-        // House specific
         string fGarden = FormatDouble(GetPropertyValue<double?>(item, "GardenSize"));
         string fPool = FormatBool(GetPropertyValue<bool?>(item, "Pool"));
 
-        // Hotel specific
         string fRooms = FormatInt(GetPropertyValue<int?>(item, "Rooms"));
         string fStar = FormatInt(GetPropertyValue<int?>(item, "StarRating"));
 
-        // LandPlot specific
         string soil = FormatString(GetPropertyValue<string>(item, "SoilType"));
         string fInfra = FormatBool(GetPropertyValue<bool?>(item, "InfrastructureAccess"));
 
@@ -2013,15 +1981,11 @@ class Program
 
     static string PadAndCenter(string? value, int totalWidth)
     {
-        string val = value ?? ""; // Use empty string for null value
-        if (totalWidth <= 0) return ""; // Cannot pad to zero or negative width
-
-        // Truncate if value is too long
+        string val = value ?? "";
+        if (totalWidth <= 0) return "";
         val = Truncate(val, totalWidth);
-
         int spaces = totalWidth - val.Length;
-        int padLeft = spaces / 2 + val.Length; // Spaces for left padding + length of string
-
+        int padLeft = spaces / 2 + val.Length;
         return val.PadLeft(padLeft).PadRight(totalWidth);
     }
 
@@ -2029,7 +1993,7 @@ class Program
     static string CenterString(string s, int width)
     {
         if (string.IsNullOrEmpty(s) || width <= 0) return new string(' ', Math.Max(0, width));
-        s = Truncate(s, width); // Ensure fits
+        s = Truncate(s, width);
         int padding = Math.Max(0, (width - s.Length) / 2);
         return new string(' ', padding) + s + new string(' ', Math.Max(0, width - s.Length - padding));
     }
@@ -2038,12 +2002,9 @@ class Program
     static string Truncate(string? value, int maxLength)
     {
         if (string.IsNullOrEmpty(value)) return "";
-        if (maxLength <= 0) return ""; // Cannot truncate to zero or negative length
+        if (maxLength <= 0) return "";
         if (value.Length <= maxLength) return value;
-
-        // Ensure "..." fits
         if (maxLength < 3) return new string('.', maxLength);
-
         return value.Substring(0, maxLength - 3) + "...";
     }
 
@@ -2058,33 +2019,28 @@ class Program
             try
             {
                 object? value = property.GetValue(item);
-                if (value == null) return default; // Property value is null
+                if (value == null) return default;
 
                 if (value is TValue correctlyTypedValue) return correctlyTypedValue;
 
-                // Handle Nullable<T> for TValue
                 Type tValueType = typeof(TValue);
                 Type? underlyingTValueType = Nullable.GetUnderlyingType(tValueType);
 
-                if (underlyingTValueType != null) // TValue is Nullable<U>
+                if (underlyingTValueType != null)
                 {
-                    if (value.GetType() == underlyingTValueType) // Direct cast if underlying types match
+                    if (value.GetType() == underlyingTValueType)
                     {
                         return (TValue)Convert.ChangeType(value, underlyingTValueType, CultureInfo.InvariantCulture);
                     }
                 }
-
-                // Attempt conversion for common scenarios (e.g. string to TValue or numeric to TValue)
-                // This is a simplified conversion logic. More robust would involve TypeConverter.
                 try
                 {
                     return (TValue)Convert.ChangeType(value, underlyingTValueType ?? tValueType, CultureInfo.InvariantCulture);
                 }
                 catch (InvalidCastException)
                 {
-                    // Try specific conversions if general ChangeType fails
                     if (tValueType == typeof(string))
-                        return (TValue)(object)value.ToString(); // Fallback to ToString for string requests
+                        return (TValue)(object)value.ToString();
 
                     System.Diagnostics.Debug.WriteLine($"Reflection: Could not cast/convert value of type {value.GetType().Name} to {tValueType.Name} for property '{propertyName}'.");
                 }
@@ -2094,34 +2050,8 @@ class Program
                 System.Diagnostics.Debug.WriteLine($"Reflection Error getting '{propertyName}': {ex.GetType().Name} - {ex.Message}");
             }
         }
-        return default; // Property not found, not readable, or conversion failed
+        return default;
     }
-
-    // This IsNumericType is not currently used by GetPropertyValue but kept for potential future use.
-    private static bool IsNumericType(Type type)
-    {
-        if (type == null) return false;
-        Type actualType = Nullable.GetUnderlyingType(type) ?? type; // Handle nullable numeric types
-
-        switch (Type.GetTypeCode(actualType))
-        {
-            case TypeCode.Byte:
-            case TypeCode.Decimal:
-            case TypeCode.Double:
-            case TypeCode.Int16:
-            case TypeCode.Int32:
-            case TypeCode.Int64:
-            case TypeCode.SByte:
-            case TypeCode.Single:
-            case TypeCode.UInt16:
-            case TypeCode.UInt32:
-            case TypeCode.UInt64:
-                return true;
-            default:
-                return false;
-        }
-    }
-
 
     // --- Container State Helpers ---
 
@@ -2132,7 +2062,7 @@ class Program
 
         if (activeContainerType == ContainerType.Array && containerArray != null)
         {
-            isEmpty = containerArray.IsEmpty(false); // Pass false to prevent double printing
+            isEmpty = containerArray.IsEmpty(false);
             count = containerArray.GetCount();
         }
         else if (activeContainerType == ContainerType.LinkedList && containerList != null)
@@ -2140,14 +2070,13 @@ class Program
             count = containerList.Count;
             isEmpty = (count == 0);
         }
-        // No else for ContainerType.None, as that's handled below
 
         if (activeContainerType == ContainerType.None)
         {
             PrintErrorMessage("No container selected. Please use option 1 or 2 first.");
-            isEmpty = true; // Consider it effectively empty for operations
+            isEmpty = true;
         }
-        else if (isEmpty) // Only print if a container is active but empty
+        else if (isEmpty)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("The active container is empty.");
@@ -2169,134 +2098,126 @@ class Program
         return 0;
     }
 
-    // Gets the next insertion ID (0-based), which is also the count of IDs ever assigned.
-    // For user display, this is typically shown as 1-based.
+    // Gets the next actual insertion ID (0-based), which is also the count of unique IDs ever assigned.
     static int GetNextInsertionId()
     {
         if (activeContainerType == ContainerType.Array && containerArray != null)
         {
-            return containerArray.GetInsertionId();
+            return containerArray.GetInsertionId(); // This is nextInsertionId (count of IDs assigned)
         }
         else if (activeContainerType == ContainerType.LinkedList && containerList != null)
         {
-            return containerList.GetNextInsertionId();
+            return containerList.GetNextInsertionId(); // This is NextInsertionId (count of IDs assigned)
         }
-        return 0; // No active container or container not initialized
+        return 0;
     }
 
     // Finds the current 0-based index of an item by reference.
     private static int FindIndexByReference(IName itemToFind)
     {
         if (itemToFind == null) return -1;
+        IEnumerable<IName>? activeEnumerable = null;
 
         if (activeContainerType == ContainerType.Array && containerArray != null)
         {
-            // Iterate using GetEnumerator which should yield non-null items in current order
+            activeEnumerable = containerArray;
+        }
+        else if (activeContainerType == ContainerType.LinkedList && containerList != null)
+        {
+            activeEnumerable = containerList;
+        }
+
+        if (activeEnumerable != null)
+        {
             int index = 0;
-            foreach (var currentItem in containerArray)
+            foreach (var currentItem in activeEnumerable)
             {
                 if (object.ReferenceEquals(currentItem, itemToFind))
                 {
                     return index;
                 }
                 index++;
+            }
+        }
+        return -1;
+    }
+
+    // Gets the 0-based actual insertion ID of an item by its reference.
+    // This requires iterating through the container's insertion order mapping.
+    private static int GetInsertionIdByReference(IName itemToFind)
+    {
+        if (itemToFind == null) return -1;
+
+        if (activeContainerType == ContainerType.Array && containerArray != null)
+        {
+            var items = containerArray.GetItems(); // Gets current items
+            var order = containerArray.GetInsertionOrder(); // Gets current mapping
+            for (int i = 0; i < containerArray.GetCount(); i++)
+            {
+                if (object.ReferenceEquals(items[i], itemToFind))
+                {
+                    return order[i]; // This is the 0-based actual insertion ID
+                }
             }
         }
         else if (activeContainerType == ContainerType.LinkedList && containerList != null)
         {
+            // For LinkedList, we need to iterate nodes and match with InsertionOrder list by index
+            var current = containerList.First;
+            var order = containerList.GetInsertionOrder(); // List of actual insertion IDs
             int index = 0;
-            foreach (var currentItem in containerList) // Iterates through nodes' data
+            while (current != null && index < order.Count)
             {
-                if (object.ReferenceEquals(currentItem, itemToFind))
+                if (object.ReferenceEquals(current.Data, itemToFind))
                 {
-                    return index;
+                    return order[index]; // The 0-based actual insertion ID
                 }
+                current = current.Next;
                 index++;
             }
-        }
-        return -1; // Not found
-    }
-
-    private static int GetInsertionIdForItem(IName itemToFind)
-    {
-        if (itemToFind == null) return -1;
-
-        int currentIndex = FindIndexByReference(itemToFind);
-        if (currentIndex == -1) return -1; // Item not in container by reference
-
-        try
-        {
-            if (activeContainerType == ContainerType.Array && containerArray != null)
-            {
-                int[] order = containerArray.GetInsertionOrder(); // This should be the order corresponding to current items
-                if (currentIndex < order.Length && currentIndex < containerArray.GetCount()) // Ensure index is valid for current items
-                {
-                    return order[currentIndex]; // This ID is 0-based
-                }
-                else { System.Diagnostics.Debug.WriteLine($"Warning: Current index {currentIndex} out of bounds for insertion Order Array (Length: {order.Length}, Count: {containerArray.GetCount()})"); }
-            }
-            else if (activeContainerType == ContainerType.LinkedList && containerList != null)
-            {
-                List<int> order = containerList.GetInsertionOrder(); // This should be the order corresponding to current items
-                if (currentIndex < order.Count && currentIndex < containerList.GetCount()) // Ensure index is valid
-                {
-                    return order[currentIndex]; // This ID is 0-based
-                }
-                else { System.Diagnostics.Debug.WriteLine($"Warning: Current index {currentIndex} out of bounds for insertion Order List (Count: {order.Count}, Actual List Count: {containerList.GetCount()})"); }
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error in GetInsertionIdForItem for current index {currentIndex}: {ex.Message}");
         }
         return -1; // Could not determine
     }
 
     // Gets an item by its 0-based current index in the container.
-    private static IName? GetItemByCurrentIndex(int index) // index is 0-based
+    private static IName? GetItemByCurrentIndex(int index)
     {
         if (index < 0) return null;
+        IEnumerable<IName>? activeEnumerable = null;
 
         if (activeContainerType == ContainerType.Array && containerArray != null)
         {
-            if (index < containerArray.GetCount())
-            {
-                // Need to iterate to the Nth non-null item if GetEnumerator() is the source of truth for current order
-                int count = 0;
-                foreach (var item in containerArray)
-                {
-                    if (count == index) return item;
-                    count++;
-                }
-            }
+            if (index < containerArray.GetCount()) activeEnumerable = containerArray;
         }
         else if (activeContainerType == ContainerType.LinkedList && containerList != null)
         {
-            if (index < containerList.Count)
+            if (index < containerList.GetCount()) activeEnumerable = containerList;
+        }
+
+        if (activeEnumerable != null)
+        {
+            int count = 0;
+            foreach (var item in activeEnumerable)
             {
-                int count = 0;
-                foreach (var item in containerList)
-                {
-                    if (count == index) return item;
-                    count++;
-                }
+                if (count == index) return item;
+                count++;
             }
         }
-        return null; // Index out of bounds or item not found
+        return null;
     }
 
-    // --- Serialization / Deserialization Handlers --- (Renumbered options 16 and 17)
+    // --- Serialization / Deserialization Handlers ---
 
     static void HandleSerializeContainer()
     {
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"\n--- Serialize Active {activeContainerType} Container ---");
+        Console.WriteLine($"\n--- Serialize Active {activeContainerType} Container to JSON ---");
         Console.ResetColor();
 
         object? activeContainerObject = null;
         if (activeContainerType == ContainerType.Array && containerArray != null)
         {
-            if (containerArray.IsEmpty(true)) return; // Checks if empty and prints message
+            if (containerArray.IsEmpty(true)) return;
             activeContainerObject = containerArray;
         }
         else if (activeContainerType == ContainerType.LinkedList && containerList != null)
@@ -2317,7 +2238,7 @@ class Program
         }
 
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.Write("Enter filename to save (without extension, e.g., 'mydata'): ");
+        Console.Write("Enter filename to save (without .json extension, e.g., 'mydata'): ");
         Console.ResetColor();
         string? filename = Console.ReadLine()?.Trim();
 
@@ -2340,13 +2261,17 @@ class Program
             Console.WriteLine($"Container successfully serialized to: {fullPath}");
             Console.ResetColor();
         }
+        catch (JsonException ex)
+        {
+            PrintErrorMessage($"JSON Serialization error: {ex.Message}");
+        }
         catch (IOException ex)
         {
             PrintErrorMessage($"File IO error during serialization: {ex.Message}");
         }
         catch (InvalidOperationException ex)
         {
-            PrintErrorMessage($"Serialization Error: {ex.Message}");
+            PrintErrorMessage($"Serialization Operation Error: {ex.Message}");
         }
         catch (Exception ex)
         {
@@ -2357,10 +2282,10 @@ class Program
     static void HandleDeserializeContainer()
     {
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine("\n--- Deserialize Container from File ---");
+        Console.WriteLine("\n--- Deserialize Container from JSON File ---");
         Console.ResetColor();
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.Write("Enter filename to load (without extension, e.g., 'mydata'): ");
+        Console.Write("Enter filename to load (without .json extension, e.g., 'mydata'): ");
         Console.ResetColor();
         string? filename = Console.ReadLine()?.Trim();
 
@@ -2376,21 +2301,15 @@ class Program
             return;
         }
 
-        object deserializedContainerObj; // Use object for the return type
+        IEnumerable<IName?>? deserializedData;
         try
         {
-            var tempContainer = ContainerSerializer.DeserializeContainer(filename);
-            if (tempContainer is Container<IName> || tempContainer is ContainerLinkedList<IName>)
-            {
-                deserializedContainerObj = tempContainer;
-            }
-            else
-            {
-                PrintErrorMessage("Deserialization did not return a recognized container type.");
-                return;
-            }
+            // ContainerSerializer.DeserializeContainer now returns the actual container object,
+            // but typed as IEnumerable<IName?>? for the call site.
+            deserializedData = ContainerSerializer.DeserializeContainer(filename);
         }
-        catch (FileNotFoundException ex) { PrintErrorMessage(ex.Message); return; } // Message already good
+        catch (FileNotFoundException ex) { PrintErrorMessage(ex.Message); return; }
+        catch (JsonException ex) { PrintErrorMessage($"JSON Deserialization error: {ex.Message}"); return; }
         catch (IOException ex) { PrintErrorMessage($"File IO error during deserialization: {ex.Message}"); return; }
         catch (InvalidOperationException ex) { PrintErrorMessage($"Deserialization Operation Error: {ex.Message}"); return; }
         catch (InvalidDataException ex) { PrintErrorMessage($"Invalid data in file: {ex.Message}"); return; }
@@ -2400,86 +2319,79 @@ class Program
             return;
         }
 
-
-        if (deserializedContainerObj == null)
+        if (deserializedData == null)
         {
-            // Error already printed by catch blocks or DeserializeContainer itself
-            Console.WriteLine("Deserialization resulted in a null container.");
+            PrintErrorMessage("Deserialization resulted in a null object or failed to identify container type.");
             return;
         }
 
         int loadedItemCount = 0;
         ContainerType deserializedType = ContainerType.None;
+        bool switched = false;
 
-        if (deserializedContainerObj is Container<IName> deserializedArray)
+        if (deserializedData is Container<IName> newArrayContainer)
         {
-            loadedItemCount = deserializedArray.GetCount();
+            loadedItemCount = newArrayContainer.GetCount();
             deserializedType = ContainerType.Array;
+
+            bool confirmSwitch = ConfirmSwitchWithCurrentData();
+            if (confirmSwitch)
+            {
+                containerArray = newArrayContainer;
+                containerList = null; // Clear other type
+                activeContainerType = ContainerType.Array;
+                containerArray.PostDeserializeInitialize(); // Re-attach events & ensure TotalPrice
+                switched = true;
+            }
         }
-        else if (deserializedContainerObj is ContainerLinkedList<IName> deserializedList)
+        else if (deserializedData is ContainerLinkedList<IName> newListContainer)
         {
-            loadedItemCount = deserializedList.GetCount();
+            loadedItemCount = newListContainer.GetCount();
             deserializedType = ContainerType.LinkedList;
+
+            bool confirmSwitch = ConfirmSwitchWithCurrentData();
+            if (confirmSwitch)
+            {
+                containerList = newListContainer;
+                containerArray = null; // Clear other type
+                activeContainerType = ContainerType.LinkedList;
+                containerList.PostDeserializeInitialize(); // Re-attach events & ensure TotalPrice
+                switched = true;
+            }
         }
         else
         {
-            PrintErrorMessage($"Deserialization returned an unexpected object type: {deserializedContainerObj.GetType().Name}");
+            PrintErrorMessage($"Deserialization returned an unexpected object type: {deserializedData.GetType().Name}");
             return;
         }
 
-        if (loadedItemCount == 0)
+        if (switched)
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"Deserialized {deserializedType} container is empty.");
-        }
-        else
-        {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Successfully deserialized {loadedItemCount} items into a {deserializedType} container.");
-            Console.ResetColor();
-        }
-
-        bool switchConfirmed = true;
-        if (activeContainerType != ContainerType.None)
-        {
-            bool currentHasItems = GetActiveContainerCount() > 0;
-            if (currentHasItems)
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write($"Replace the current {activeContainerType} container with the deserialized data? (y/n): ");
-                Console.ResetColor();
-                switchConfirmed = (Console.ReadLine()?.Trim().ToLower() == "y");
-            }
-        }
-
-        if (switchConfirmed)
-        {
-            if (deserializedContainerObj is Container<IName> newArrayContainer)
-            {
-                containerArray = newArrayContainer;
-                containerList = null;
-                activeContainerType = ContainerType.Array;
-            }
-            else if (deserializedContainerObj is ContainerLinkedList<IName> newListContainer)
-            {
-                containerList = newListContainer;
-                containerArray = null;
-                activeContainerType = ContainerType.LinkedList;
-            }
-            // No else needed due to earlier type check
-
             Console.ForegroundColor = ConsoleColor.Magenta;
-            Console.WriteLine($"Active container switched to the deserialized {activeContainerType} container.");
+            Console.WriteLine($"Active container switched to the deserialized {activeContainerType} container with {loadedItemCount} items.");
             Console.ResetColor();
-            HandleShowContainer(); // Show the newly loaded container
+            HandleShowContainer();
         }
         else
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Switch cancelled. Keeping the current active container.");
+            Console.WriteLine("Switch cancelled. Kept the current active container.");
             Console.ResetColor();
         }
     }
+
+    static bool ConfirmSwitchWithCurrentData()
+    {
+        if (activeContainerType != ContainerType.None && GetActiveContainerCount() > 0)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write($"Replace the current {activeContainerType} container with the deserialized data? This will clear current data. (y/n): ");
+            Console.ResetColor();
+            return (Console.ReadLine()?.Trim().ToLower() == "y");
+        }
+        return true; // No current data or no active container, so switch is fine
+    }
+
 
     // New Handler for Total Price
     static void HandleShowTotalPrice()
@@ -2514,20 +2426,20 @@ class Program
             }
         }
 
-        if (isEmptyOrNotInitialized && (containerArray != null || containerList != null)) // Container exists but is empty
+        if (isEmptyOrNotInitialized && (containerArray != null || containerList != null))
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("The active container is empty.");
             Console.ResetColor();
-            Console.WriteLine($"Total Price: {totalPrice:N2}"); // Should be 0.00
+            Console.WriteLine($"Total Price: {totalPrice:N2}");
         }
-        else if (containerArray != null || containerList != null) // Container exists and has items (or had items, and price is tracked)
+        else if (containerArray != null || containerList != null)
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"Total Price of all items: {totalPrice:N2}");
             Console.ResetColor();
         }
-        else // Should ideally be caught by the first check, but as a safeguard
+        else
         {
             PrintErrorMessage("Container object is not initialized, cannot get total price.");
         }
@@ -2563,7 +2475,7 @@ class Program
         string[] locations = { "Chicago", "Los Angeles", "Houston", "Phoenix", "Philadelphia", "Dallas", "Miami" };
         string[] invTypes = { "REIT", "Direct Property", "Mortgage Fund", "Syndication", "Crowdfunding" };
         decimal price = random.Next(500000, 5000000) + Math.Round((decimal)random.NextDouble() * 10000, 2);
-        decimal marketValue = price * (decimal)(0.8 + random.NextDouble() * 0.4); // Market value related to price
+        decimal marketValue = price * (decimal)(0.8 + random.NextDouble() * 0.4);
         return new RealEstateInvestment(
             names[random.Next(names.Length)],
             Math.Max(0.01m, price),
@@ -2598,16 +2510,15 @@ class Program
         string[] types = { "Single-family", "Multi-family Detached", "Duplex Attached" };
         decimal price = random.Next(300000, 1200000) + Math.Round((decimal)random.NextDouble() * 1000, 2);
         double size = random.Next(100, 400) + Math.Round(random.NextDouble() * 15, 1);
-        // Ensure GardenSize is not negative as per constructor validation.
         double gardenSize = random.Next(0, 1000) + Math.Round(random.NextDouble() * 100, 1);
-        bool pool = random.Next(3) == 0; // 1/3 chance of having a pool
+        bool pool = random.Next(3) == 0;
         return new House(
             names[random.Next(names.Length)],
             Math.Max(0.01m, price),
             locations[random.Next(locations.Length)],
             Math.Max(1.0, size),
             types[random.Next(types.Length)],
-            gardenSize, // Already positive
+            gardenSize,
             pool);
     }
 
@@ -2619,14 +2530,14 @@ class Program
         decimal price = random.Next(1000000, 10000000) + Math.Round((decimal)random.NextDouble() * 50000, 2);
         decimal marketValue = price * (decimal)(0.9 + random.NextDouble() * 0.3);
         int rooms = random.Next(20, 500);
-        int rating = random.Next(1, 6); // 1 to 5 stars
+        int rating = random.Next(1, 6);
         return new Hotel(
             names[random.Next(names.Length)],
             Math.Max(0.01m, price),
             locations[random.Next(locations.Length)],
             Math.Max(1.0m, Math.Round(marketValue, 2)),
             invTypes[random.Next(invTypes.Length)],
-            Math.Max(1, rooms), // Ensure rooms > 0
+            Math.Max(1, rooms),
             rating);
     }
 
@@ -2638,7 +2549,7 @@ class Program
         string[] soilTypes = { "Loamy", "Clay Rich", "Sandy Loam", "Silty Clay", "Peaty Soil", "Chalky Ground" };
         decimal price = random.Next(50000, 500000) + Math.Round((decimal)random.NextDouble() * 2000, 2);
         decimal marketValue = price * (decimal)(0.7 + random.NextDouble() * 0.6);
-        bool infra = random.Next(2) == 0; // 50/50 chance
+        bool infra = random.Next(2) == 0;
         return new LandPlot(
             names[random.Next(names.Length)],
             Math.Max(0.01m, price),
