@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace lb_11.Interfaces
+namespace lb_12.Interfaces
 {
     public interface ICustomSerializable: IName
     {

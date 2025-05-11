@@ -1,9 +1,11 @@
 ﻿using System.Collections.Generic;
-using lb_11.Interfaces;
+using lb_12.Interfaces;
 using System.Reflection;
 using System.Collections;
+using System;
+using System.Linq;
 
-namespace lb_11
+namespace lb_12
 {
     class Helper
     {
@@ -95,14 +97,13 @@ namespace lb_11
             return deletedObject;
         }
 
-        public void SortByPrice()
+        public void Sort(Comparison<T> comparison)
         {
-            Array.Sort(items, new PriceComparer());
-        }
-
-        public void SortByName()
-        {
-            Array.Sort(items);
+            if (comparison == null) throw new ArgumentNullException(nameof(comparison));
+            if (count > 1)
+            {
+                Array.Sort(items, 0, count, Comparer<T>.Create(comparison));
+            }
         }
 
         public override string ToString()
@@ -182,6 +183,18 @@ namespace lb_11
                 }
             }
             return default;
+        }
+
+        public T? Find(Predicate<T> match)
+        {
+            if (match == null) throw new ArgumentNullException(nameof(match));
+            return items.FirstOrDefault(item => item != null && match(item));
+        }
+
+        public IEnumerable<T> FindAll(Predicate<T> match)
+        {
+            if (match == null) throw new ArgumentNullException(nameof(match));
+            return items.Where(item => item != null && match(item)).Cast<T>();
         }
 
 
@@ -394,21 +407,6 @@ namespace lb_11
             return deletedItem;
         }
 
-        public void Sort(string sortBy = "Price")
-        {
-            if (_head == null) return;
-
-            List<T> list = NodeToList();
-            BinaryInsertionSort(list, sortBy);
-
-            var current = _head;
-            foreach (var item in list)
-            {
-                current.Data = item;
-                current = current.Next;
-            }
-        }
-
         public List<T> NodeToList()
         {
             List<T> list = new List<T>();
@@ -458,6 +456,21 @@ namespace lb_11
                     low = mid + 1;
             }
             return low;
+        }
+
+        public void Sort(Comparison<T> comparison)
+        {
+            if (_head == null || comparison == null) return;
+
+            List<T> list = NodeToList();
+            list.Sort(comparison);
+
+            var current = _head;
+            foreach (var item in list)
+            {
+                current.Data = item;
+                current = current.Next;
+            }
         }
 
         private int Compare(object? a, object? b)
@@ -529,6 +542,18 @@ namespace lb_11
             return values.Count == 0 ? null : values;
         }
 
+        public T? Find(Predicate<T> match)
+        {
+            if (match == null) throw new ArgumentNullException(nameof(match));
+            return this.FirstOrDefault(item => item != null && match(item));
+        }
+
+        public IEnumerable<T> FindAll(Predicate<T> match)
+        {
+            if (match == null) throw new ArgumentNullException(nameof(match));
+            return this.Where(item => item != null && match(item)).Cast<T>();
+        }
+
         // Insortion indexer
         public T? this[int index]
         {
@@ -572,7 +597,7 @@ namespace lb_11
         }
 
         // Implemented foreach usage
-        public T Current => _currentNode?.Data;
+        public T Current => _currentNode?.Data!;
 
         object IEnumerator.Current => Current;
 
