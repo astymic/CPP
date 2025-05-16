@@ -220,7 +220,7 @@ namespace IRT
         }
 
 
-        // Insertion order indexer
+        
         public T? this[int id] 
         {
             get => GetInstanceByInsertionId(id);
@@ -237,13 +237,13 @@ namespace IRT
             }
         }
 
-        // Name indexer
+        
         public T[] this[string i] 
         {
             get => GetItemsByParameter("Name", i); 
         }
 
-        // Implemented foreach usage
+        
         public IEnumerator<T> GetEnumerator()
         {
             foreach (var item in items)
@@ -258,7 +258,7 @@ namespace IRT
         }
 
 
-        // Reverse Generator 
+        
         public IEnumerable<T> GetReverseArray()
         {
             var _items = (T[])items.Clone();
@@ -269,7 +269,7 @@ namespace IRT
             }
         }
 
-        // Substring Generator
+        
         public IEnumerable<T> GetArrayWithSublineInName(string subline)
         {
             foreach (var item in items)
@@ -279,7 +279,7 @@ namespace IRT
             }
         }
 
-        // Sorted by Price Generator
+        
         public IEnumerable<T> GetSortedByArrayPrice()
         {
             var _items = (T[])items.Clone();
@@ -290,7 +290,7 @@ namespace IRT
             }
         }
 
-        // Sorted by Name Generator
+        
         public IEnumerable<T> GetSortedArrayByName()
         {
             var _items = (T[])items.Clone();
@@ -584,7 +584,7 @@ namespace IRT
             return this.Where(item => item != null && match(item)).Cast<T>();
         }
 
-        // Insortion indexer
+        
         public T? this[int index]
         {
             get
@@ -620,13 +620,13 @@ namespace IRT
             }
         }
 
-        // Name indexer
+        
         public List<T> this[string name]
         {
             get => GetItemsByParameter<string>("Name", name);
         }
 
-        // Implemented foreach usage
+        
         public T Current => _currentNode?.Data!;
 
         object IEnumerator.Current => Current;
@@ -664,7 +664,7 @@ namespace IRT
         }
 
 
-        // Reverse Generator 
+        
         public IEnumerable<T> GetReverseArray()
         {
             var current = GetLastNode();
@@ -675,7 +675,7 @@ namespace IRT
             }
         }
 
-        // Substring Generator
+        
         public IEnumerable<T> GetArrayWithSublineInName(string subline)
         {
             var current = _head;
@@ -690,7 +690,7 @@ namespace IRT
         }
 
 
-        // Sorted by Price Generator
+        
         public IEnumerable<T> GetSortedByArrayPrice()
         {
             if (_head == null) yield break;
@@ -704,7 +704,7 @@ namespace IRT
             }
         }
 
-        // Sorted by Name Generator
+        
         public IEnumerable<T> GetSortedArrayByName()
         {
             if (_head == null) yield break;

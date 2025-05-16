@@ -20,28 +20,28 @@ public static class ContainerSerializer
 
         int count;
         string containerType;
-        IEnumerable<IName> _container;
-        
+        IEnumerable<IName> _containerEnumerable; 
+
         switch (container)
         {
             case Container<IName> array:
                 count = array.GetCount();
-                _container = array;
+                _containerEnumerable = array;
                 containerType = typeof(Container<IName>).Name;
                 break;
             case ContainerLinkedList<IName> linkedList:
                 count = linkedList.GetCount();
-                _container = linkedList;
+                _containerEnumerable = linkedList;
                 containerType = typeof(ContainerLinkedList<IName>).Name;
                 break;
             default:
-                throw new ArgumentException("Container is None. Please select a container.");
+                throw new ArgumentException("Container is of an unknown type. Please select a supported container.");
         }
 
         writer.Write(containerType.Split('`')[0]);
         writer.Write(count);
 
-        foreach (var item in _container)
+        foreach (var item in _containerEnumerable)
         {
             if (item is ICustomSerializable serializable)
             {
@@ -69,7 +69,7 @@ public static class ContainerSerializer
         { "LandPlot", reader => LandPlot.Deserialize(reader) }
     };
 
-    public static IEnumerable<IName?> DeserializeContainer(string name)
+    public static object DeserializeContainer(string name) 
     {
         string filePath = $"{name}.bin";
         if (!File.Exists(filePath)) throw new FileNotFoundException($"File '{filePath}' doesn't exist");
@@ -89,7 +89,7 @@ public static class ContainerSerializer
         if (!containerFactories.TryGetValue(containerType, out var containerFactory))
             throw new InvalidDataException($"Unknown container type {containerType}");
 
-        dynamic container = containerFactory();
+        dynamic deserializedContainer = containerFactory(); 
 
         for (int i = 0; i < count; i++)
         {
@@ -98,12 +98,28 @@ public static class ContainerSerializer
             if (Deserializers.TryGetValue(typeName, out var deserializer))
             {
                 var item = deserializer(reader);
-                container.Add(item);
+                
+                if (deserializedContainer is Container<IName> cArray)
+                {
+                    cArray.Add(item);
+                }
+                else if (deserializedContainer is ContainerLinkedList<IName> cList)
+                {
+                    cList.AddLast(item);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Deserialized container does not support adding items in this way.");
+                }
+            }
+            else
+            {
+                
+                System.Diagnostics.Debug.WriteLine($"Warning: Unknown type '{typeName}' encountered during deserialization. Item skipped.");
             }
         }
 
         stream.Close();
-        return container;
-
+        return deserializedContainer; 
     }
 }
