@@ -24,40 +24,159 @@ namespace IRT.ConsoleOutput
 
         public void HandleAutomaticGeneration()
         {
-            ContainerType chosenType = _containerManager.AskContainerTypeSelection();
-            if (!_containerManager.SelectOrInitializeContainer(chosenType, true))
-                return;
-
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n--- Automatic Generation ---");
             Console.ResetColor();
-            try
+
+            bool proceedWithGeneration = false;
+
+            if (_containerManager.ActiveContainerType == ContainerType.None)
             {
-                int count = InputReader.ReadInt("Enter number of elements to generate: ", 1);
-                Console.WriteLine($"Generating {count} elements for {_containerManager.ActiveContainerType} Container...");
-                _dataFactory.GenerateItemsAndAdd(_containerManager.AddItemToActive, count);
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\nAutomatic generation of {count} elements complete for {_containerManager.ActiveContainerType} container.");
-                Console.ResetColor();
-                _containerManager.DemonstrateIndexers(_dataFactory);
+                Console.WriteLine("No active container. Please select a container type to generate items into.");
+                ContainerType chosenType = _containerManager.AskContainerTypeSelection();
+                if (chosenType != ContainerType.None)
+                {
+                    if (_containerManager.SelectOrInitializeContainer(chosenType, forceNew: true))
+                    {
+                        proceedWithGeneration = true;
+                    }
+                }
             }
-            catch (FormatException) { /* Handled by InputReader */ }
-            catch (ValueLessThanZero) { /* Handled by InputReader */ }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"An {_containerManager.ActiveContainerType} container is already active with {_containerManager.GetActiveContainerCount()} items.");
+                Console.WriteLine("Do you want to:");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"1. Add new items to the current {_containerManager.ActiveContainerType} container?");
+                Console.WriteLine("2. Switch to a different container type (will clear current items if different)?");
+                Console.WriteLine("3. Create a new, empty container of the same type (will clear current items)?");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                string choice = InputReader.ReadString("Enter choice (1, 2, 3, or any other key to cancel): ", true);
+                Console.ResetColor();
+
+                switch (choice)
+                {
+                    case "1": 
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"\nProceeding with the active {_containerManager.ActiveContainerType} container.");
+                        Console.ResetColor();
+                        proceedWithGeneration = true;
+                        break;
+                    case "2": 
+                        ContainerType newChosenType = _containerManager.AskContainerTypeSelection();
+                        if (newChosenType != ContainerType.None)
+                        {
+                            if (_containerManager.SelectOrInitializeContainer(newChosenType, forceNew: false))
+                            {
+                                proceedWithGeneration = true;
+                            }
+                        }
+                        break;
+                    case "3": 
+                        if (_containerManager.SelectOrInitializeContainer(_containerManager.ActiveContainerType, forceNew: true))
+                        {
+                            proceedWithGeneration = true;
+                        }
+                        break;
+                    default:
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine("Automatic generation cancelled.");
+                        Console.ResetColor();
+                        break;
+                }
+            }
+
+            if (proceedWithGeneration)
+            {
+                try
+                {
+                    int count = InputReader.ReadInt("Enter number of elements to generate: ", 1);
+                    Console.WriteLine($"Generating {count} elements for {_containerManager.ActiveContainerType} Container...");
+                    _dataFactory.GenerateItemsAndAdd(_containerManager.AddItemToActive, count); 
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"\nAutomatic generation of {count} additional elements complete for {_containerManager.ActiveContainerType} container.");
+                    Console.ResetColor();
+                    _containerManager.DemonstrateIndexers(_dataFactory);
+                }
+                catch (FormatException) { /* Handled by InputReader */ }
+                catch (ValueLessThanZero) { /* Handled by InputReader */ }
+            }
         }
 
         public void HandleManualInput()
         {
-            ContainerType chosenType = _containerManager.AskContainerTypeSelection();
-            if (!_containerManager.SelectOrInitializeContainer(chosenType, GetCurrentItemCountForConfirmation() > 0))
-                return;
-
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Manual Input for {_containerManager.ActiveContainerType} Container ---");
+            Console.WriteLine($"\n--- Manual Input ---");
             Console.ResetColor();
-            IName? newItem = _dataFactory.CreateItemManually();
-            if (newItem != null)
+
+            bool proceedWithManualInput = false;
+
+            if (_containerManager.ActiveContainerType == ContainerType.None)
             {
-                _containerManager.AddItemToActive(newItem);
+                Console.WriteLine("No active container. Please select a container type to add items to.");
+                ContainerType chosenType = _containerManager.AskContainerTypeSelection();
+                if (chosenType != ContainerType.None)
+                {
+                    if (_containerManager.SelectOrInitializeContainer(chosenType, forceNew: true))
+                    {
+                        proceedWithManualInput = true;
+                    }
+                }
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"An {_containerManager.ActiveContainerType} container is already active with {_containerManager.GetActiveContainerCount()} items.");
+                Console.WriteLine("Do you want to:");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"1. Add a new item to the current {_containerManager.ActiveContainerType} container?");
+                Console.WriteLine("2. Switch to a different container type (will clear current items if different)?");
+                Console.WriteLine("3. Create a new, empty container of the same type (will clear current items)?");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                string choice = InputReader.ReadString("Enter choice (1, 2, 3, or any other key to cancel): ", true);
+                Console.ResetColor();
+
+                switch (choice)
+                {
+                    case "1": 
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"\nProceeding with the active {_containerManager.ActiveContainerType} container.");
+                        Console.ResetColor();
+                        proceedWithManualInput = true;
+                        break;
+                    case "2": 
+                        ContainerType newChosenType = _containerManager.AskContainerTypeSelection();
+                        if (newChosenType != ContainerType.None)
+                        {
+                            if (_containerManager.SelectOrInitializeContainer(newChosenType, forceNew: false))
+                            {
+                                proceedWithManualInput = true;
+                            }
+                        }
+                        break;
+                    case "3": 
+                        if (_containerManager.SelectOrInitializeContainer(_containerManager.ActiveContainerType, forceNew: true))
+                        {
+                            proceedWithManualInput = true;
+                        }
+                        break;
+                    default:
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine("Manual input cancelled.");
+                        Console.ResetColor();
+                        break;
+                }
+            }
+
+            if (proceedWithManualInput)
+            {
+                Console.WriteLine($"\n--- Manual Input for {_containerManager.ActiveContainerType} Container ---");
+                IName? newItem = _dataFactory.CreateItemManually();
+                if (newItem != null)
+                {
+                    _containerManager.AddItemToActive(newItem); 
+                }
             }
         }
 
