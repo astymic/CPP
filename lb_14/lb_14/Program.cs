@@ -2554,7 +2554,7 @@ class Program
             return;
         }
 
-        IEnumerable<decimal> prices = Enumerable.Empty<decimal>();
+        IEnumerable<IName> prices = Enumerable.Empty<IName>();
         bool isEmptyOrNotInitialized = true;
         int itemCount = 0;
 
@@ -2564,7 +2564,7 @@ class Program
             {
                 prices = from product in containerArray
                          where product != null
-                         select product.Price;
+                         select product;
 
                 itemCount = containerArray.GetCount();
                 isEmptyOrNotInitialized = containerArray.IsEmpty(false);
@@ -2576,14 +2576,14 @@ class Program
             {
                 prices = from product in containerList
                          where product != null
-                         select product.Price;
+                         select product;
 
                 itemCount = containerList.Count;
                 isEmptyOrNotInitialized = (itemCount == 0);
             }
         }
 
-        if (isEmptyOrNotInitialized || !prices.Any())
+        if (isEmptyOrNotInitialized)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("The active container is empty or contains no items with prices.");
@@ -2591,17 +2591,17 @@ class Program
         }
         else if (containerArray != null || containerList != null)
         {
-            decimal minPrice = prices.Min();
-            decimal maxPrice = prices.Max();
+            var minPrice = prices.OrderBy(p => p.Price).First();
+            var maxPrice = prices.OrderByDescending(p => p.Price).First();
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write("The Minimal Price is: ");
+            Console.WriteLine("The Product with Minimal Price is: ");
             Console.ResetColor();
-            Console.WriteLine($"{minPrice:N2}");
+            DisplayItemTable(0, minPrice);
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write("The Maximum Price is: ");
+            Console.WriteLine("The Product with Maximum Price is: ");
             Console.ResetColor();
-            Console.WriteLine($"{maxPrice:N2}");
+            DisplayItemTable(0, maxPrice);
         }
         else
         {
