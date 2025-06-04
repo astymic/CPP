@@ -2570,7 +2570,7 @@ class Program
                 isEmptyOrNotInitialized = containerArray.IsEmpty(false);
             }
         }
-        else // LinkedList
+        else // LinkedList 
         {
             if (containerList != null)
             {

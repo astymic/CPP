@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 using IRT.Classes;
 using IRT.Interfaces;
 
@@ -79,18 +78,13 @@ namespace IRT
         public void Sort(Comparison<T> comparison)
         {
             if (comparison == null) throw new ArgumentNullException(nameof(comparison));
-
             for (int i = 0; i < count - 1; i++)
-            {
                 for (int j = 0; j < count - 1 - i; j++)
-                { 
                     if (comparison(items[j], items[j + 1]) > 0)
                     {
                         (items[j], items[j + 1]) = (items[j + 1], items[j]);
                         (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
                     }
-                }
-            }
         }
 
         private void OnItemPriceChanged(object sender, decimal oldPrice)
@@ -102,23 +96,16 @@ namespace IRT
         public override string ToString()
         {
             if (count == 0) return "Container is empty.";
-
-            string res = "";
-            foreach (var item in items)
-            {
-                if (item is null)
-                    continue;
-                res += item.ToString() + "\n";
-            }
-            return res;
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            for (int i = 0; i < count; i++)
+                sb.AppendLine(items[i].ToString());
+            return sb.ToString();
         }
 
         public IEnumerable<T> GetReverseArray()
         {
             T[] activeItems = new T[count];
-            for (int i = 0; i < count; i++) 
-                activeItems[i] = items[i];
-
+            for (int i = 0; i < count; i++) activeItems[i] = items[i];
             int iRev = 0, jRev = count - 1;
             while (iRev < jRev)
             {
@@ -126,55 +113,34 @@ namespace IRT
                 iRev++;
                 jRev--;
             }
-
             for (int i = 0; i < activeItems.Length; i++)
                 yield return activeItems[i];
         }
-
         public IEnumerable<T> GetArrayWithSublineInName(string subline)
         {
             for (int i = 0; i < count; i++)
                 if (((IName<T>)items[i]).Name.Contains(subline))
                     yield return items[i];
         }
-
         public IEnumerable<T> GetSortedByArrayPrice()
         {
             T[] tempArray = new T[count];
-            for (int i = 0; i < count; i++) 
-                tempArray[i] = items[i];
-
+            for (int i = 0; i < count; i++) tempArray[i] = items[i];
             for (int i = 0; i < tempArray.Length - 1; i++)
-            {
                 for (int j = 0; j < tempArray.Length - 1 - i; j++)
-                { 
                     if (tempArray[j].Price > tempArray[j + 1].Price)
-                    { 
                         (tempArray[j], tempArray[j + 1]) = (tempArray[j + 1], tempArray[j]);
-                    }
-                }
-            }
-
             for (int i = 0; i < tempArray.Length; i++)
                 yield return tempArray[i];
         }
-
         public IEnumerable<T> GetSortedArrayByName()
         {
             T[] tempArray = new T[count];
             for (int i = 0; i < count; i++) tempArray[i] = items[i];
-
             for (int i = 0; i < tempArray.Length - 1; i++)
-            { 
                 for (int j = 0; j < tempArray.Length - 1 - i; j++)
-                { 
                     if (string.Compare(((IName<T>)tempArray[j]).Name, ((IName<T>)tempArray[j + 1]).Name, StringComparison.OrdinalIgnoreCase) > 0)
-                    { 
                         (tempArray[j], tempArray[j + 1]) = (tempArray[j + 1], tempArray[j]);
-                    }
-                }
-            }
-
             for (int i = 0; i < tempArray.Length; i++)
                 yield return tempArray[i];
         }
@@ -212,6 +178,8 @@ namespace IRT
             }
             return container;
         }
+
+
 
         public T this[int id]
         {
@@ -361,15 +329,9 @@ namespace IRT
             }
 
             for (int i = 0; i < arr.Length - 1; i++)
-            { 
                 for (int j = 0; j < arr.Length - 1 - i; j++)
-                { 
                     if (comparison(arr[j], arr[j + 1]) > 0)
-                    { 
                         (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);
-                    }
-                }
-            }
 
             cur = head;
             int idx = 0;
@@ -391,15 +353,14 @@ namespace IRT
         public override string ToString()
         {
             if (count == 0) return "ContainerLinkedList is empty.";
-
-            string res = string.Empty;
-            var current = head;
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            Node current = head;
             while (current != null)
             {
-                res += current.Data?.ToString() + "\n";
+                sb.AppendLine(current.Data.ToString());
                 current = current.Next;
             }
-            return res;
+            return sb.ToString();
         }
 
         public IEnumerable<T> GetReverseArray()
@@ -438,16 +399,10 @@ namespace IRT
             }
 
             for (int i = 0; i < arr.Length - 1; i++)
-            { 
                 for (int j = 0; j < arr.Length - 1 - i; j++)
-                { 
                     if (arr[j].Price > arr[j + 1].Price)
-                    { 
                         (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);
-                    }
-                }
-            }
-
+            
             for (int i = 0; i < arr.Length; i++)
                 yield return arr[i];
         }
@@ -462,15 +417,9 @@ namespace IRT
             }
 
             for (int i = 0; i < arr.Length - 1; i++)
-            { 
                 for (int j = 0; j < arr.Length - 1 - i; j++)
-                { 
                     if (string.Compare(((IName<T>)arr[j]).Name, ((IName<T>)arr[j + 1]).Name, StringComparison.OrdinalIgnoreCase) > 0)
-                    { 
                         (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);
-                    }
-                }
-            }
 
             for (int i = 0; i < arr.Length; i++)
                 yield return arr[i];
