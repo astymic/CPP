@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace IRT.Interfaces
 {
-    public interface ICustomSerializable: IName
+    public interface ICustomSerializable
     {
         void Serialize(BinaryWriter writer);
-        static object Deserialize(BinaryReader reader) => throw new NotImplementedException(); 
     }
 }

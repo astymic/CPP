@@ -1,4 +1,5 @@
-﻿using IRT.ConsoleOutput;
+﻿using IRT.Classes;
+using IRT.ConsoleOutput;
 
 namespace IRT
 {

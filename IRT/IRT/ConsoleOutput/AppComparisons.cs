@@ -5,20 +5,26 @@ namespace IRT.ConsoleOutput
 {
     public static class AppComparisons
     {
-        public static Comparison<IName> NameComparison { get; } = (x, y) =>
+        public class NameComparer<T> : IComparer<T> where T : IName
         {
-            if (ReferenceEquals(x, y)) return 0;
-            if (x == null) return -1;
-            if (y == null) return 1;
-            return string.Compare(x.Name, y.Name, StringComparison.OrdinalIgnoreCase);
-        };
+            public int Compare(T? x, T? y)
+            {
+                if (x == null && y == null) return 0;
+                if (x == null) return -1;
+                if (y == null) return 1;
+                return string.Compare(x.Name, y.Name, StringComparison.OrdinalIgnoreCase);
+            }
+        }
 
-        public static Comparison<IName> PriceComparison { get; } = (x, y) =>
+        public class PriceComparer<T> : IComparer<T> where T : IPrice
         {
-            if (ReferenceEquals(x, y)) return 0;
-            if (x == null) return -1;
-            if (y == null) return 1;
-            return x.Price.CompareTo(y.Price);
-        };
+            public int Compare(T? x, T? y)
+            {
+                if (x == null && y == null) return 0;
+                if (x == null) return -1;
+                if (y == null) return 1;
+                return x.Price.CompareTo(y.Price);
+            }
+        }
     }
 }

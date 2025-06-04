@@ -1,89 +1,41 @@
-﻿using System.Collections.Generic;
-using IRT.Interfaces;
-using System.Reflection;
+﻿using System;
 using System.Collections;
-using System;
-using System.Linq;
+using System.Collections.Generic;
+using System.IO;
+using IRT.Classes;
+using IRT.Interfaces;
 
 namespace IRT
 {
-    class Helper
+    public class Container<T> : IEnumerable<T> where T : IName, IName<T>, IPrice, ICustomSerializable
     {
-        public static V? GetPropertyValue<V>(object item, string propertyName)
-        {
-            if (item == null) return default;
-
-            PropertyInfo? property = item.GetType().GetProperty(propertyName);
-            if (property != null && property.CanRead)
-            {
-                return (V?)property.GetValue(item);
-            }
-            return default;
-        }
-    }
-
-    class PriceComparer : IComparer
-    {
-        public int Compare(object? x, object? y)
-        {
-            if (x == null && y == null) return 0;
-            if (x == null) return -1;
-            if (y == null) return 1;
-
-            bool xHasPrice = x is IPrice;
-            bool yHasPrice = y is IPrice;
-
-            if (xHasPrice && yHasPrice)
-            {
-                return ((IPrice)x).Price.CompareTo(((IPrice)y).Price);
-            }
-
-            if (xHasPrice) return -1;
-            if (yHasPrice) return 1;
-
-            return 0;
-        }
-    }
-
-    class Container<T> : IEnumerable<T> where T : IName
-    {
-        private T?[] items;
+        private T[] items;
         private int[] insertionOrder;
         private int count;
         private int size;
         private int nextInsertionId;
+        private decimal totalPrice;
 
-        public decimal TotalPrice
-        {
-            get
-            {
-                decimal sum = 0;
-                for (int i = 0; i < count; i++)
-                {
-                    if (items[i] is IPrice priceItem) 
-                    {
-                        sum += priceItem.Price;
-                    }
-                }
-                return sum;
-            }
-        }
+        public decimal TotalPrice => totalPrice;
+        public int Count => count;
+        public int InsertionId => nextInsertionId;
 
         public Container()
         {
-            items = new T?[1];
-            insertionOrder = new int[1];
+            items = new T[4];
+            insertionOrder = new int[4];
             count = 0;
-            size = 1;
+            size = 4;
             nextInsertionId = 0;
+            totalPrice = 0;
         }
 
-        public void Add(T _newObject)
+        public void Add(T item)
         {
             if (count == size)
             {
                 int newSize = size * 2;
-                T?[] newItemsArray = new T?[newSize];
+                T[] newItemsArray = new T[newSize];
                 int[] newInsertionOrderArray = new int[newSize];
                 for (int i = 0; i < size; i++)
                 {
@@ -94,20 +46,24 @@ namespace IRT
                 insertionOrder = newInsertionOrderArray;
                 size = newSize;
             }
-            items[count] = _newObject;
+            items[count] = item;
             insertionOrder[count] = nextInsertionId;
             nextInsertionId++;
             count++;
+            totalPrice += item.Price;
+            item.PriceChanged += OnItemPriceChanged;
         }
 
-        public T? RemoveById(int _index)
+        public T RemoveById(int index)
         {
-            if (_index < 0 || _index >= count)
+            if (index < 0 || index >= count)
                 throw new IndexOutOfRangeException("Index is out of range for removal.");
 
-            T? deletedObject = items[_index];
+            T deletedObject = items[index];
+            totalPrice -= deletedObject.Price;
+            deletedObject.PriceChanged -= OnItemPriceChanged;
 
-            for (int i = _index; i < count - 1; i++)
+            for (int i = index; i < count - 1; i++)
             {
                 items[i] = items[i + 1];
                 insertionOrder[i] = insertionOrder[i + 1];
@@ -122,593 +78,283 @@ namespace IRT
         public void Sort(Comparison<T> comparison)
         {
             if (comparison == null) throw new ArgumentNullException(nameof(comparison));
-            if (count > 1)
-            {
-                InsertionSortWithTracking(items, insertionOrder, count, comparison);
-            }
-        }
-
-        
-        private static void InsertionSortWithTracking(T?[] array, int[] trackingArray, int currentItemCount, Comparison<T> comparison)
-        {
-            for (int i = 1; i < currentItemCount; i++)
-            {
-                T? keyItem = array[i];
-                int keyTrack = trackingArray[i];
-                int j = i - 1;
-                
-                while (j >= 0 && comparison(keyItem!, array[j]!) < 0)
-                {
-                    array[j + 1] = array[j];
-                    trackingArray[j + 1] = trackingArray[j];
-                    j = j - 1;
-                }
-                array[j + 1] = keyItem;
-                trackingArray[j + 1] = keyTrack;
-            }
-        }
-
-        private static T?[] CloneArraySegment(T?[] source, int startIndex, int length)
-        {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            if (startIndex < 0 || length < 0 || startIndex + length > source.Length)
-                throw new ArgumentOutOfRangeException("Invalid clone segment parameters.");
-
-            T?[] newArray = new T?[length];
-            for (int i = 0; i < length; i++)
-            {
-                newArray[i] = source[startIndex + i];
-            }
-            return newArray;
-        }
-
-        private static void ReverseArraySegment(T?[] array, int startIndex, int length)
-        {
-            if (array == null) throw new ArgumentNullException(nameof(array));
-            if (startIndex < 0 || length < 0 || startIndex + length > array.Length)
-                throw new ArgumentOutOfRangeException("Invalid reverse segment parameters.");
-
-            int i = startIndex;
-            int j = startIndex + length - 1;
-            while (i < j)
-            {
-                (array[i], array[j]) = (array[j], array[i]);
-                i++;
-                j--;
-            }
-        }
-
-        private static void InsertionSortArray(T?[] array, int currentItemCount, IComparer comparer)
-        {
-            for (int i = 1; i < currentItemCount; i++)
-            {
-                T? key = array[i];
-                int j = i - 1;
-                
-                while (j >= 0 && comparer.Compare(key, array[j]) < 0)
-                {
-                    array[j + 1] = array[j];
-                    j = j - 1;
-                }
-                array[j + 1] = key;
-            }
-        }
-
-        private static void InsertionSortArrayForIName(T?[] array, int currentItemCount)
-        {
-            for (int i = 1; i < currentItemCount; i++)
-            {
-                T? key = array[i]; 
-                int j = i - 1;
-
-                
-                while (j >= 0)
-                {
-                    bool shouldMoveCurrentJ;
-                    T? currentJItem = array[j]; 
-
-                    if (key == null) 
+            for (int i = 0; i < count - 1; i++)
+                for (int j = 0; j < count - 1 - i; j++)
+                    if (comparison(items[j], items[j + 1]) > 0)
                     {
-                        if (currentJItem != null) shouldMoveCurrentJ = true; 
-                        else break; 
+                        (items[j], items[j + 1]) = (items[j + 1], items[j]);
+                        (insertionOrder[j], insertionOrder[j + 1]) = (insertionOrder[j + 1], insertionOrder[j]);
                     }
-                    else 
-                    {
-                        if (currentJItem == null) break; 
-                        else if (key.CompareTo(currentJItem) < 0) 
-                        {
-                            shouldMoveCurrentJ = true;
-                        }
-                        else break; 
-                    }
-
-                    if (shouldMoveCurrentJ)
-                    {
-                        array[j + 1] = currentJItem;
-                        j--;
-                    }
-                    else
-                    {
-                        break; 
-                    }
-                }
-                array[j + 1] = key;
-            }
         }
-        
+
+        private void OnItemPriceChanged(object sender, decimal oldPrice)
+        {
+            decimal diff = ((IPrice)sender).Price - oldPrice;
+            totalPrice += diff;
+        }
 
         public override string ToString()
         {
             if (count == 0) return "Container is empty.";
-            
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
             for (int i = 0; i < count; i++)
-            {
-                sb.AppendLine(items[i]!.ToString());
-            }
+                sb.AppendLine(items[i].ToString());
             return sb.ToString();
         }
 
-        public int GetCount() => count;
-        public int GetInsertionId() => nextInsertionId;
-
-        public int[] GetInsertionOrder()
+        public IEnumerable<T> GetReverseArray()
         {
-            int[] currentOrder = new int[count];
-            for (int i = 0; i < count; i++)
+            T[] activeItems = new T[count];
+            for (int i = 0; i < count; i++) activeItems[i] = items[i];
+            int iRev = 0, jRev = count - 1;
+            while (iRev < jRev)
             {
-                currentOrder[i] = insertionOrder[i];
+                (activeItems[iRev], activeItems[jRev]) = (activeItems[jRev], activeItems[iRev]);
+                iRev++;
+                jRev--;
             }
-            return currentOrder;
+            for (int i = 0; i < activeItems.Length; i++)
+                yield return activeItems[i];
+        }
+        public IEnumerable<T> GetArrayWithSublineInName(string subline)
+        {
+            for (int i = 0; i < count; i++)
+                if (((IName<T>)items[i]).Name.Contains(subline))
+                    yield return items[i];
+        }
+        public IEnumerable<T> GetSortedByArrayPrice()
+        {
+            T[] tempArray = new T[count];
+            for (int i = 0; i < count; i++) tempArray[i] = items[i];
+            for (int i = 0; i < tempArray.Length - 1; i++)
+                for (int j = 0; j < tempArray.Length - 1 - i; j++)
+                    if (tempArray[j].Price > tempArray[j + 1].Price)
+                        (tempArray[j], tempArray[j + 1]) = (tempArray[j + 1], tempArray[j]);
+            for (int i = 0; i < tempArray.Length; i++)
+                yield return tempArray[i];
+        }
+        public IEnumerable<T> GetSortedArrayByName()
+        {
+            T[] tempArray = new T[count];
+            for (int i = 0; i < count; i++) tempArray[i] = items[i];
+            for (int i = 0; i < tempArray.Length - 1; i++)
+                for (int j = 0; j < tempArray.Length - 1 - i; j++)
+                    if (string.Compare(((IName<T>)tempArray[j]).Name, ((IName<T>)tempArray[j + 1]).Name, StringComparison.OrdinalIgnoreCase) > 0)
+                        (tempArray[j], tempArray[j + 1]) = (tempArray[j + 1], tempArray[j]);
+            for (int i = 0; i < tempArray.Length; i++)
+                yield return tempArray[i];
         }
 
-        public T[] GetItemsByParameter<Y>(string param, Y val)
+        public void Serialize(BinaryWriter writer)
         {
-            T[] foundItemsBuffer = new T[count];
-            int foundCount = 0;
+            writer.Write(count);
             for (int i = 0; i < count; i++)
             {
-                if (items[i] != null)
+                var item = items[i];
+                writer.Write(item.GetType().Name);
+                item.Serialize(writer);
+            }
+        }
+
+
+        public static Container<T> Deserialize(BinaryReader reader)
+        {
+            var container = new Container<T>();
+            int c = reader.ReadInt32();
+            for (int i = 0; i < c; i++)
+            {
+                string typeName = reader.ReadString();
+                var type = typeof(T).Assembly.GetTypes()
+                    .FirstOrDefault(t => t.Name == typeName && typeof(T).IsAssignableFrom(t));
+                if (type == null)
+                    throw new InvalidOperationException("Unknown type: " + typeName);
+
+                var method = type.GetMethod("Deserialize", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (method == null)
+                    throw new InvalidOperationException($"No static Deserialize method in {typeName}");
+
+                var obj = (T)method.Invoke(null, new object[] { reader });
+                container.Add(obj);
+            }
+            return container;
+        }
+
+
+
+        public T this[int id]
+        {
+            get
+            {
+                for (int i = 0; i < count; i++)
+                    if (insertionOrder[i] == id)
+                        return items[i];
+                return default;
+            }
+            set
+            {
+                for (int i = 0; i < count; i++)
                 {
-                    var propValue = Helper.GetPropertyValue<Y>(items[i]!, param);
-                    if (propValue != null && propValue.Equals(val))
+                    if (insertionOrder[i] == id)
                     {
-                        foundItemsBuffer[foundCount] = items[i]!;
-                        foundCount++;
+                        totalPrice -= items[i].Price;
+                        items[i].PriceChanged -= OnItemPriceChanged;
+                        items[i] = value;
+                        totalPrice += value.Price;
+                        value.PriceChanged += OnItemPriceChanged;
+                        break;
                     }
                 }
             }
-            if (foundCount == 0) return System.Array.Empty<T>();
-
-            T[] result = new T[foundCount];
-            for (int i = 0; i < foundCount; i++)
-            {
-                result[i] = foundItemsBuffer[i];
-            }
-            return result;
         }
-
-        public T? GetInstanceByInsertionId(int id)
+        public IEnumerator<T> GetEnumerator()
         {
-            if (id < 0 || id >= nextInsertionId)
-                throw new IndexOutOfRangeException($"Insertion ID {id} is out of the valid range of assigned IDs (0 to {nextInsertionId - 1}).");
-
             for (int i = 0; i < count; i++)
-            {
-                if (insertionOrder[i] == id)
-                {
-                    return items[i];
-                }
-            }
-            return default;
+                yield return items[i];
         }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public T? Find(Predicate<T> match)
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
             for (int i = 0; i < count; i++)
-            {
-                if (items[i] != null && match(items[i]!))
-                {
+                if (match(items[i]))
                     return items[i];
-                }
-            }
-            return default(T); 
+            return default;
         }
 
         public IEnumerable<T> FindAll(Predicate<T> match)
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
             for (int i = 0; i < count; i++)
-            {
-                if (items[i] != null && match(items[i]!))
-                {
-                    yield return items[i]!;
-                }
-            }
+                if (match(items[i]))
+                    yield return items[i];
         }
 
-        public T? this[int id]
+        public IEnumerable<T> GetByNamePrefix(string prefix)
         {
-            get => GetInstanceByInsertionId(id);
-            set
-            {
-                if (value == null) throw new ArgumentNullException(nameof(value), "Cannot set item to null using indexer.");
-                bool found = false;
-                for (int i = 0; i < count; i++)
-                {
-                    if (insertionOrder[i] == id)
-                    {
-                        items[i] = value; 
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    throw new IndexOutOfRangeException($"Cannot find element by insertion ID {id} to set.");
-                }
-            }
-        }
-
-        public T[] this[string name] 
-        {
-            get => GetItemsByParameter("Name", name);
-        }
-
-        public IEnumerator<T> GetEnumerator()
-        {
+            if (prefix == null) throw new ArgumentNullException(nameof(prefix));
             for (int i = 0; i < count; i++)
             {
-                if (items[i] != null)
-                {
-                    yield return items[i]!;
-                }
-            }
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        public IEnumerable<T> GetReverseArray()
-        {
-            T?[] activeItems = CloneArraySegment(items, 0, count);
-            ReverseArraySegment(activeItems, 0, count);
-            for (int i = 0; i < activeItems.Length; i++) 
-            {
-                if (activeItems[i] != null) yield return activeItems[i]!;
-            }
-        }
-
-        public IEnumerable<T> GetArrayWithSublineInName(string subline)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                if (items[i] != null && items[i]!.Name.Contains(subline))
-                    yield return items[i]!;
-            }
-        }
-
-        public IEnumerable<T> GetSortedByArrayPrice()
-        {
-            T?[] activeItems = CloneArraySegment(items, 0, count);
-            InsertionSortArray(activeItems, count, new PriceComparer());
-            for (int i = 0; i < activeItems.Length; i++)
-            {
-                if (activeItems[i] != null) yield return activeItems[i]!;
-            }
-        }
-
-        public IEnumerable<T> GetSortedArrayByName()
-        {
-            T?[] activeItems = CloneArraySegment(items, 0, count);
-            InsertionSortArrayForIName(activeItems, count);
-            for (int i = 0; i < activeItems.Length; i++)
-            {
-                if (activeItems[i] != null) yield return activeItems[i]!;
+                if (((IName)items[i]).Name != null && ((IName)items[i]).Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    yield return items[i];
             }
         }
     }
 
-
-    class ContainerLinkedList<T> : IEnumerable<T>, IEnumerator<T> where T : class, IName
+    public class ContainerLinkedList<T> : IEnumerable<T> where T : IName, IName<T>, IPrice, ICustomSerializable
     {
         public class Node
         {
             public T Data { get; set; }
-            public Node? Next { get; set; }
-            public Node? Previous { get; set; }
-
-            public Node(T data)
-            {
-                Data = data;
-                Next = null;
-                Previous = null;
-            }
+            public Node Next { get; set; }
+            public Node Previous { get; set; }
+            public Node(T data) { Data = data; }
         }
 
-        public decimal TotalPrice
-        {
-            get
-            {
-                decimal sum = 0;
-                Node? current = _head;
-                while (current != null)
-                {
-                    if (current.Data is IPrice priceItem)
-                    {
-                        sum += priceItem.Price;
-                    }
-                    current = current.Next;
-                }
-                return sum;
-            }
-        }
+        private Node head;
+        private Node tail;
+        private int count;
+        private int nextInsertionId;
+        private decimal totalPrice;
+        private readonly Dictionary<Node, int> insertionOrderMap = new();
 
+        public decimal TotalPrice => totalPrice;
+        public int Count => count;
+        public int InsertionId => nextInsertionId;
 
         public ContainerLinkedList()
         {
-            _head = null;
-            _currentNode = null;
-            Count = 0;
-            InsertionOrderMap = new Dictionary<Node, int>();
-            NextInsertionId = 0;
-        }
-
-        private Node? _head;
-        private Node? _currentNode;
-
-        public Node? First => _head;
-        public Node? Last => GetLastNode();
-
-        public int Count { get; private set; }
-
-        private int NextInsertionId;
-        private Dictionary<Node, int> InsertionOrderMap { get; set; }
-
-
-        public void AddFirst(T data)
-        {
-            Node newNode = new Node(data);
-            InsertionOrderMap[newNode] = NextInsertionId;
-
-            if (_head != null)
-            {
-                newNode.Next = _head;
-                _head.Previous = newNode;
-            }
-            _head = newNode;
-
-            Count++;
-            NextInsertionId++;
+            head = null;
+            tail = null;
+            count = 0;
+            nextInsertionId = 0;
         }
 
         public void AddLast(T data)
         {
-            Node newNode = new Node(data);
-            InsertionOrderMap[newNode] = NextInsertionId;
-
-            if (_head == null)
+            Node node = new Node(data);
+            insertionOrderMap[node] = nextInsertionId++;
+            if (head == null)
             {
-                _head = newNode;
+                head = tail = node;
             }
             else
             {
-                Node lastNode = GetLastNode()!;
-                lastNode.Next = newNode;
-                newNode.Previous = lastNode;
+                tail.Next = node;
+                node.Previous = tail;
+                tail = node;
             }
-
-            Count++;
-            NextInsertionId++;
+            count++;
+            totalPrice += data.Price;
+            data.PriceChanged += OnItemPriceChanged;
         }
 
-        public void Sort(Comparison<T> comparison)
+        public T RemoveByIndex(int index)
         {
-            if (_head == null || _head.Next == null || comparison == null) return;
+            if (index < 0 || index >= count)
+                throw new ArgumentOutOfRangeException();
 
-            T[] tempArray = ConvertToArray(); 
-            Node[] nodeArray = new Node[Count];
-
-            int idx = 0;
-            Node? current = _head;
-            while (current != null)
-            {
-                
-                nodeArray[idx] = current;
+            Node current = head;
+            for (int i = 0; i < index; i++)
                 current = current.Next;
-                idx++;
-            }
 
-            
-            for (int i = 1; i < Count; i++)
-            {
-                T keyData = tempArray[i];
-                Node keyNode = nodeArray[i]; 
-                int j = i - 1;
-
-                while (j >= 0 && comparison(keyData, tempArray[j]) < 0)
-                {
-                    tempArray[j + 1] = tempArray[j];
-                    nodeArray[j + 1] = nodeArray[j]; 
-                    j--;
-                }
-                tempArray[j + 1] = keyData;
-                nodeArray[j + 1] = keyNode; 
-            }
-
-            _head = null;
-            Node? prevNode = null;
-            for (int i = 0; i < Count; i++)
-            {
-                Node sortedNode = nodeArray[i]; 
-                sortedNode.Next = null;
-                sortedNode.Previous = prevNode;
-
-                if (prevNode != null)
-                {
-                    prevNode.Next = sortedNode;
-                }
-                else
-                {
-                    _head = sortedNode;
-                }
-                prevNode = sortedNode;
-            }
-        }
-        
-        private T[] ConvertToArray() 
-        {
-            T[] tempArray = new T[Count];
-            int idx = 0;
-            Node? current = _head;
-            while (current != null)
-            {
-                tempArray[idx++] = current.Data; 
-                current = current.Next;
-            }
-            return tempArray;
-        }
-
-        private static void ReverseArraySegmentGeneric<TItem>(TItem?[] array, int startIndex, int length)
-        {
-            if (array == null) throw new ArgumentNullException(nameof(array));
-            if (startIndex < 0 || length < 0 || startIndex + length > array.Length)
-                throw new ArgumentOutOfRangeException("Invalid reverse segment parameters.");
-
-            int i = startIndex;
-            int j = startIndex + length - 1;
-            while (i < j)
-            {
-                (array[i], array[j]) = (array[j], array[i]);
-                i++;
-                j--;
-            }
-        }
-
-        private static void InsertionSortArrayGeneric<TItem>(TItem?[] array, int currentItemCount, IComparer comparer)
-            where TItem : class 
-        {
-            for (int i = 1; i < currentItemCount; i++)
-            {
-                TItem? key = array[i];
-                int j = i - 1;
-                while (j >= 0 && comparer.Compare(key, array[j]) < 0)
-                {
-                    array[j + 1] = array[j];
-                    j = j - 1;
-                }
-                array[j + 1] = key;
-            }
-        }
-
-        private static void InsertionSortArrayForINameGeneric<TItem>(TItem?[] array, int currentItemCount)
-             where TItem : class, IName 
-        {
-            for (int i = 1; i < currentItemCount; i++)
-            {
-                TItem? key = array[i];
-                int j = i - 1;
-
-                while (j >= 0)
-                {
-                    bool shouldMoveCurrentJ = false;
-                    TItem? currentJItem = array[j];
-
-                    if (key == null)
-                    {
-                        if (currentJItem != null) shouldMoveCurrentJ = true;
-                        else break;
-                    }
-                    else
-                    {
-                        if (currentJItem == null) break;
-                        else if (key.CompareTo(currentJItem) < 0)
-                        {
-                            shouldMoveCurrentJ = true;
-                        }
-                        else break;
-                    }
-
-                    if (shouldMoveCurrentJ)
-                    {
-                        array[j + 1] = currentJItem;
-                        j--;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-                array[j + 1] = key;
-            }
-        }
-        
-
-        private Node? GetLastNode()
-        {
-            if (_head == null) return null;
-            Node node = _head;
-            while (node.Next != null)
-            {
-                node = node.Next;
-            }
-            return node;
-        }
-
-        public List<int> GetInsertionOrder()
-        {
-            var order = new List<int>(Count); 
-            var current = _head;
-            while (current != null)
-            {
-                if (InsertionOrderMap.TryGetValue(current, out int insId))
-                {
-                    order.Add(insId);
-                }
-                else
-                {
-                    order.Add(-1);
-                }
-                current = current.Next;
-            }
-            return order;
-        }
-
-        public T? RemoveByIndex(int index)
-        {
-            if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException(nameof(index));
-
-            Node? current = _head;
-            for (int i = 0; i < index && current != null; i++)
-            {
-                current = current.Next;
-            }
-
-            if (current == null) throw new InvalidOperationException("Failed to find node at index during removal.");
-
-            T deletedItem = current.Data; 
-            InsertionOrderMap.Remove(current);
+            T data = current.Data;
+            totalPrice -= data.Price;
+            data.PriceChanged -= OnItemPriceChanged;
+            insertionOrderMap.Remove(current);
 
             if (current.Previous != null)
                 current.Previous.Next = current.Next;
             else
-                _head = current.Next;
-
+                head = current.Next;
             if (current.Next != null)
                 current.Next.Previous = current.Previous;
+            else
+                tail = current.Previous;
 
-            Count--;
-            return deletedItem;
+            count--;
+            return data;
         }
 
-        public int GetNextInsertionId() => NextInsertionId;
-        public int GetCount() => Count;
+        public void Sort(Comparison<T> comparison)
+        {
+            if (count < 2) return;
+            T[] arr = new T[count];
+            Node cur = head;
+
+            for (int i = 0; i < count; i++) 
+            { 
+                arr[i] = cur.Data; 
+                cur = cur.Next; 
+            }
+
+            for (int i = 0; i < arr.Length - 1; i++)
+                for (int j = 0; j < arr.Length - 1 - i; j++)
+                    if (comparison(arr[j], arr[j + 1]) > 0)
+                        (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);
+
+            cur = head;
+            int idx = 0;
+            while (cur != null)
+            {
+                cur.Data.PriceChanged -= OnItemPriceChanged;
+                cur.Data = arr[idx++];
+                cur.Data.PriceChanged += OnItemPriceChanged;
+                cur = cur.Next;
+            }
+        }
+
+        private void OnItemPriceChanged(object sender, decimal oldPrice)
+        {
+            decimal diff = ((IPrice)sender).Price - oldPrice;
+            totalPrice += diff;
+        }
 
         public override string ToString()
         {
-            if (_head == null) return "Container is empty.";
+            if (count == 0) return "ContainerLinkedList is empty.";
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
-            var current = _head;
+            Node current = head;
             while (current != null)
             {
                 sb.AppendLine(current.Data.ToString());
@@ -717,156 +363,174 @@ namespace IRT
             return sb.ToString();
         }
 
-        private List<T> GetItemsByParameterList<Y>(string parameter, Y val) 
+        public IEnumerable<T> GetReverseArray()
         {
-            List<T> values = new List<T>();
-            var current = _head;
-            while (current != null)
+            T[] arr = new T[count];
+            Node cur = head;
+            for (int i = 0; i < count; i++) { arr[i] = cur.Data; cur = cur.Next; }
+            int iRev = 0, jRev = count - 1;
+            while (iRev < jRev)
             {
-                var propValue = Helper.GetPropertyValue<Y>(current.Data, parameter);
-                if (propValue != null && propValue.Equals(val))
-                {
-                    values.Add(current.Data);
-                }
-                current = current.Next;
+                (arr[iRev], arr[jRev]) = (arr[jRev], arr[iRev]);
+                iRev++;
+                jRev--;
             }
-            return values; 
+            for (int i = 0; i < arr.Length; i++)
+                yield return arr[i];
+        }
+        public IEnumerable<T> GetArrayWithSublineInName(string subline)
+        {
+            Node cur = head;
+            while (cur != null)
+            {
+                if (((IName<T>)cur.Data).Name.Contains(subline))
+                    yield return cur.Data;
+                cur = cur.Next;
+            }
+        }
+        public IEnumerable<T> GetSortedByArrayPrice()
+        {
+            T[] arr = new T[count];
+            Node cur = head;
+            for (int i = 0; i < count; i++) 
+            { 
+                arr[i] = cur.Data; 
+                cur = cur.Next; 
+            }
+
+            for (int i = 0; i < arr.Length - 1; i++)
+                for (int j = 0; j < arr.Length - 1 - i; j++)
+                    if (arr[j].Price > arr[j + 1].Price)
+                        (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);
+            
+            for (int i = 0; i < arr.Length; i++)
+                yield return arr[i];
+        }
+        public IEnumerable<T> GetSortedArrayByName()
+        {
+            T[] arr = new T[count];
+            Node cur = head;
+            for (int i = 0; i < count; i++) 
+            { 
+                arr[i] = cur.Data; 
+                cur = cur.Next; 
+            }
+
+            for (int i = 0; i < arr.Length - 1; i++)
+                for (int j = 0; j < arr.Length - 1 - i; j++)
+                    if (string.Compare(((IName<T>)arr[j]).Name, ((IName<T>)arr[j + 1]).Name, StringComparison.OrdinalIgnoreCase) > 0)
+                        (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);
+
+            for (int i = 0; i < arr.Length; i++)
+                yield return arr[i];
         }
 
+        public void Serialize(BinaryWriter writer)
+        {
+            writer.Write(count);
+            Node current = head;
+            while (current != null)
+            {
+                var item = current.Data;
+                writer.Write(item.GetType().Name); 
+                item.Serialize(writer);
+                current = current.Next;
+            }
+        }
+
+        public static ContainerLinkedList<T> Deserialize(BinaryReader reader)
+        {
+            var container = new ContainerLinkedList<T>();
+            int c = reader.ReadInt32();
+            for (int i = 0; i < c; i++)
+            {
+                string typeName = reader.ReadString();
+                var type = typeof(T).Assembly.GetTypes()
+                    .FirstOrDefault(t => t.Name == typeName && typeof(T).IsAssignableFrom(t));
+                if (type == null)
+                    throw new InvalidOperationException("Unknown type: " + typeName);
+
+                var method = type.GetMethod("Deserialize", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (method == null)
+                    throw new InvalidOperationException($"No static Deserialize method in {typeName}");
+
+                var obj = (T)method.Invoke(null, new object[] { reader });
+                container.AddLast(obj); 
+            }
+            return container;
+        }
+
+
+        public T this[int id]
+        {
+            get
+            {
+                foreach (var pair in insertionOrderMap)
+                    if (pair.Value == id)
+                        return pair.Key.Data;
+                return default;
+            }
+            set
+            {
+                foreach (var pair in insertionOrderMap)
+                {
+                    if (pair.Value == id)
+                    {
+                        totalPrice -= pair.Key.Data.Price;
+                        pair.Key.Data.PriceChanged -= OnItemPriceChanged;
+                        pair.Key.Data = value;
+                        totalPrice += value.Price;
+                        value.PriceChanged += OnItemPriceChanged;
+                        break;
+                    }
+                }
+            }
+        }
+        public IEnumerator<T> GetEnumerator()
+        {
+            Node current = head;
+            while (current != null)
+            {
+                yield return current.Data;
+                current = current.Next;
+            }
+        }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public T? Find(Predicate<T> match)
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
-            var current = _head;
-            while (current != null)
+            var node = head;
+            while (node != null)
             {
-                if (match(current.Data)) return current.Data;
-                current = current.Next;
+                if (match(node.Data))
+                    return node.Data;
+                node = node.Next;
             }
-            return null; 
+            return default;
         }
 
         public IEnumerable<T> FindAll(Predicate<T> match)
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
-            var current = _head;
-            while (current != null)
+            var node = head;
+            while (node != null)
             {
-                if (match(current.Data)) yield return current.Data;
-                current = current.Next;
+                if (match(node.Data))
+                    yield return node.Data;
+                node = node.Next;
             }
         }
 
-        public T? this[int insertionIdToFind]
+        public IEnumerable<T> GetByNamePrefix(string prefix)
         {
-            get
+            if (prefix == null) throw new ArgumentNullException(nameof(prefix));
+            var node = head;
+            while (node != null)
             {
-                var current = _head;
-                while (current != null)
-                {
-                    if (InsertionOrderMap.TryGetValue(current, out int currentId) && currentId == insertionIdToFind)
-                    {
-                        return current.Data;
-                    }
-                    current = current.Next;
-                }
-                return null;
-            }
-            set
-            {
-                if (value == null) throw new ArgumentNullException(nameof(value), "Cannot set item to null using indexer.");
-                var current = _head;
-                bool updated = false;
-                while (current != null)
-                {
-                    if (InsertionOrderMap.TryGetValue(current, out int currentId) && currentId == insertionIdToFind)
-                    {
-                        current.Data = value;
-                        updated = true;
-                        break;
-                    }
-                    current = current.Next;
-                }
-                if (!updated) throw new IndexOutOfRangeException($"Cannot find element by insertion ID {insertionIdToFind} to set.");
-            }
-        }
-
-        public List<T> this[string name] 
-        {
-            get => GetItemsByParameterList<string>("Name", name);
-        }
-
-        public T Current => _currentNode!.Data;
-
-        object IEnumerator.Current => Current;
-
-        public bool MoveNext()
-        {
-            if (_currentNode == null)
-            {
-                _currentNode = _head;
-            }
-            else
-            {
-                _currentNode = _currentNode.Next;
-            }
-            return _currentNode != null;
-        }
-
-        public void Reset() => _currentNode = null;
-        public void Dispose() { }
-
-        public IEnumerator<T> GetEnumerator()
-        {
-            Reset();
-            return this;
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-
-        public IEnumerable<T> GetReverseArray()
-        {
-            T[] tempArray = ConvertToArray(); 
-            ReverseArraySegmentGeneric(tempArray, 0, Count);
-            for (int i = 0; i < tempArray.Length; i++)
-            {
-                yield return tempArray[i]; 
-            }
-        }
-
-        public IEnumerable<T> GetArrayWithSublineInName(string subline)
-        {
-            var current = _head;
-            while (current != null)
-            {
-                if (current.Data.Name.Contains(subline))
-                {
-                    yield return current.Data;
-                }
-                current = current.Next;
-            }
-        }
-
-        public IEnumerable<T> GetSortedByArrayPrice()
-        {
-            if (_head == null) yield break;
-            T[] tempArray = ConvertToArray(); 
-            InsertionSortArrayGeneric(tempArray, Count, new PriceComparer());
-            for (int i = 0; i < tempArray.Length; i++)
-            {
-                yield return tempArray[i];
-            }
-        }
-
-        public IEnumerable<T> GetSortedArrayByName()
-        {
-            if (_head == null) yield break;
-            T[] tempArray = ConvertToArray(); 
-            InsertionSortArrayForINameGeneric(tempArray, Count);
-            for (int i = 0; i < tempArray.Length; i++)
-            {
-                yield return tempArray[i];
+                if (((IName)node.Data).Name != null && ((IName)node.Data).Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    yield return node.Data;
+                node = node.Next;
             }
         }
     }

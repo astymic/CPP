@@ -3,11 +3,8 @@
     public interface IName : IComparable
     {
         string Name { get; set; }
-        decimal Price { get; set; }
-
-        int CompareTo(object obj);
     }
-    public interface IName<T>
+    public interface IName<T> : IComparable<T>
     {
         string Name { get; set; }
     }

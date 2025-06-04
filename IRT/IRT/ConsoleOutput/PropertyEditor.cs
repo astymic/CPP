@@ -9,21 +9,22 @@ namespace IRT.ConsoleOutput
     public class PropertyEditor
     {
         private readonly DisplayManager _displayManager;
-        private readonly ContainerManager _containerManager;
+        
+        
 
-        public PropertyEditor(DisplayManager displayManager, ContainerManager containerManager)
+        public PropertyEditor(DisplayManager displayManager, ContainerManager containerManager) 
         {
             _displayManager = displayManager;
-            _containerManager = containerManager;
+            
         }
 
-        public void ModifyProperty(IName itemToModify, int itemZeroBasedInsertionId)
+        public void ModifyProperty(IName itemToModify, int? itemZeroBasedInsertionId = null) 
         {
             ArgumentNullException.ThrowIfNull(itemToModify);
 
             var properties = itemToModify.GetType()
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite && p.GetSetMethod(true) != null && p.Name != "Item")
+                .Where(p => p.CanWrite && p.GetSetMethod(true) != null && p.Name != "Item" /* Indexer property */)
                 .ToList();
 
             if (properties.Count == 0)
@@ -56,30 +57,27 @@ namespace IRT.ConsoleOutput
                 bool isNullable = underlyingType != null;
 
                 string prompt = $"Enter new value for {selectedProperty.Name} (Type: {targetTypeName}{(isNullable ? ", or empty for null" : "")}): ";
+
+                
+                
                 string newValueString = InputReader.ReadString(prompt, allowNullOrEmpty: isNullable);
 
 
                 if (ReflectionHelper.TryParseAndSetValue(itemToModify, selectedProperty, newValueString))
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"\nProperty '{selectedProperty.Name}' updated successfully for item (Insertion ID: {itemZeroBasedInsertionId + 1}).");
+                    string idMsg = itemZeroBasedInsertionId.HasValue ? $"(Insertion ID: {itemZeroBasedInsertionId.Value + 1})" : "(ID not specified)";
+                    Console.WriteLine($"\nProperty '{selectedProperty.Name}' updated successfully for item {idMsg}.");
                     Console.WriteLine("New item details:");
                     Console.ResetColor();
 
-                    int currentIndex = _containerManager.FindIndexByReferenceInActive(itemToModify);
-                    if (currentIndex != -1)
-                    {
-                        _displayManager.DisplayItemTable(currentIndex + 1, itemToModify);
-                    }
-                    else
-                    {
-                        _displayManager.DisplayItemTable(itemZeroBasedInsertionId + 1, itemToModify);
-                        ConsoleUI.PrintErrorMessage("Could not determine current index after modification for display. Displayed with Insertion ID.");
-                    }
+                    
+                    _displayManager.DisplayItemTable(itemZeroBasedInsertionId.HasValue ? itemZeroBasedInsertionId.Value + 1 : 1, itemToModify);
                 }
             }
-            catch (FormatException) { /* Error already printed by InputReader */ }
-            catch (ValueLessThanZero) { /* Error already printed by InputReader */ }
+            catch (FormatException) { /* Error already printed by InputReader or ReflectionHelper */ }
+            catch (ValueLessThanZero) { /* Error already printed by InputReader or setter */ }
+            
         }
     }
 }

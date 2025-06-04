@@ -2,7 +2,7 @@
 
 namespace IRT.Classes
 {
-    class RealEstate : Product, IName<RealEstate>, ICustomSerializable
+    public class RealEstate : Product, ICustomSerializable
     {
         public string Location { get; set; }
         public double Size { get; set; }

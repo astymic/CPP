@@ -1,824 +1,490 @@
-﻿using IRT.Classes;
-using IRT.Interfaces;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
+using System.IO;
+using IRT.Classes;
+using IRT.ConsoleOutput;
+using IRT.Interfaces;
 
-namespace IRT.ConsoleOutput
+namespace IRT
 {
-    public class OperationHandlers
+    public class OperationHandlers 
     {
         private readonly ContainerManager _containerManager;
         private readonly DataFactory _dataFactory;
         private readonly DisplayManager _displayManager;
         private readonly PropertyEditor _propertyEditor;
 
-        public OperationHandlers(ContainerManager containerManager, DataFactory dataFactory, DisplayManager displayManager, PropertyEditor propertyEditor)
+        public OperationHandlers(
+            ContainerManager containerManager,
+            DataFactory dataFactory,
+            DisplayManager displayManager,
+            PropertyEditor propertyEditor)
         {
-            _containerManager = containerManager;
-            _dataFactory = dataFactory;
-            _displayManager = displayManager;
-            _propertyEditor = propertyEditor;
+            _containerManager = containerManager ?? throw new ArgumentNullException(nameof(containerManager));
+            _dataFactory = dataFactory ?? throw new ArgumentNullException(nameof(dataFactory));
+            _displayManager = displayManager ?? throw new ArgumentNullException(nameof(displayManager));
+            _propertyEditor = propertyEditor ?? throw new ArgumentNullException(nameof(propertyEditor));
+        }
+
+        private void SelectAndInitializeContainer(bool isManualInput)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("Select container type for generation/input:");
+            Console.WriteLine("1. Array Container");
+            Console.WriteLine("2. LinkedList Container");
+            Console.ResetColor();
+            string? typeChoiceStr = Console.ReadLine();
+
+            ContainerType selectedType;
+            switch (typeChoiceStr)
+            {
+                case "1":
+                    selectedType = ContainerType.Array;
+                    break;
+                case "2":
+                    selectedType = ContainerType.LinkedList;
+                    break;
+                default:
+                    ConsoleUI.PrintErrorMessage("Invalid choice. Defaulting to Array container.");
+                    selectedType = ContainerType.Array;
+                    break;
+            }
+
+            bool forceNew = false;
+            if (_containerManager.GetActiveContainerTypeEnum() == selectedType && _containerManager.GetCount() > 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write($"Container type '{selectedType}' is already active and contains items. ");
+                forceNew = InputReader.ReadBool("Do you want to clear it and start fresh? (yes/no): ");
+                Console.ResetColor();
+            }
+            _containerManager.SelectOrInitializeContainer(selectedType, forceNew);
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Switched to {selectedType} container. It is {(forceNew || _containerManager.GetCount() == 0 ? "empty" : "active with existing items")}.");
+            Console.ResetColor();
         }
 
         public void HandleAutomaticGeneration()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n--- Automatic Generation ---");
-            Console.ResetColor();
+            SelectAndInitializeContainer(false);
+            int count = InputReader.ReadInt("Enter number of items to generate: ", 1);
+            Console.WriteLine($"Generating {count} items for {_containerManager.GetActiveContainerTypeName()} container...");
 
-            bool proceedWithGeneration = false;
-
-            if (_containerManager.ActiveContainerType == ContainerType.None)
-            {
-                Console.WriteLine("No active container. Please select a container type to generate items into.");
-                ContainerType chosenType = _containerManager.AskContainerTypeSelection();
-                if (chosenType != ContainerType.None)
+            
+            _dataFactory.GenerateItemsAndAdd(
+                (IName item) => 
                 {
-                    if (_containerManager.SelectOrInitializeContainer(chosenType, forceNew: true))
+                    if (item is Product product) 
                     {
-                        proceedWithGeneration = true;
+                        _containerManager.AddItemToActive(product); 
                     }
-                }
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"An {_containerManager.ActiveContainerType} container is already active with {_containerManager.GetActiveContainerCount()} items.");
-                Console.WriteLine("Do you want to:");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine($"1. Add new items to the current {_containerManager.ActiveContainerType} container?");
-                Console.WriteLine("2. Switch to a different container type (will clear current items if different)?");
-                Console.WriteLine("3. Create a new, empty container of the same type (will clear current items)?");
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                string choice = InputReader.ReadString("Enter choice (1, 2, 3, or any other key to cancel): ", true);
-                Console.ResetColor();
+                    else
+                    {
+                        ConsoleUI.PrintErrorMessage($"Item '{item.Name}' of type '{item.GetType().Name}' is not a Product and cannot be added to the current container.");
+                    }
+                },
+                count
+            );
 
-                switch (choice)
-                {
-                    case "1": 
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"\nProceeding with the active {_containerManager.ActiveContainerType} container.");
-                        Console.ResetColor();
-                        proceedWithGeneration = true;
-                        break;
-                    case "2": 
-                        ContainerType newChosenType = _containerManager.AskContainerTypeSelection();
-                        if (newChosenType != ContainerType.None)
-                        {
-                            if (_containerManager.SelectOrInitializeContainer(newChosenType, forceNew: false))
-                            {
-                                proceedWithGeneration = true;
-                            }
-                        }
-                        break;
-                    case "3": 
-                        if (_containerManager.SelectOrInitializeContainer(_containerManager.ActiveContainerType, forceNew: true))
-                        {
-                            proceedWithGeneration = true;
-                        }
-                        break;
-                    default:
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("Automatic generation cancelled.");
-                        Console.ResetColor();
-                        break;
-                }
-            }
-
-            if (proceedWithGeneration)
-            {
-                try
-                {
-                    int count = InputReader.ReadInt("Enter number of elements to generate: ", 1);
-                    Console.WriteLine($"Generating {count} elements for {_containerManager.ActiveContainerType} Container...");
-                    _dataFactory.GenerateItemsAndAdd(_containerManager.AddItemToActive, count); 
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"\nAutomatic generation of {count} additional elements complete for {_containerManager.ActiveContainerType} container.");
-                    Console.ResetColor();
-                    _containerManager.DemonstrateIndexers(_dataFactory);
-                }
-                catch (FormatException) { /* Handled by InputReader */ }
-                catch (ValueLessThanZero) { /* Handled by InputReader */ }
-            }
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Automatic generation complete.");
+            Console.ResetColor();
         }
 
         public void HandleManualInput()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Manual Input ---");
+            SelectAndInitializeContainer(true);
+            IName? newItem = _dataFactory.CreateItemManually();
+            if (newItem is Product product)
+            {
+                _containerManager.AddItemToActive(product);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Item added successfully.");
+                
+                
+                _displayManager.DisplayItemTable(_containerManager.GetNextInsertionId() - 1 + 1, product); 
+            }
+            else if (newItem != null)
+            {
+                ConsoleUI.PrintErrorMessage($"Created item '{newItem.Name}' was not a Product and could not be added.");
+            }
             Console.ResetColor();
-
-            bool proceedWithManualInput = false;
-
-            if (_containerManager.ActiveContainerType == ContainerType.None)
-            {
-                Console.WriteLine("No active container. Please select a container type to add items to.");
-                ContainerType chosenType = _containerManager.AskContainerTypeSelection();
-                if (chosenType != ContainerType.None)
-                {
-                    if (_containerManager.SelectOrInitializeContainer(chosenType, forceNew: true))
-                    {
-                        proceedWithManualInput = true;
-                    }
-                }
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"An {_containerManager.ActiveContainerType} container is already active with {_containerManager.GetActiveContainerCount()} items.");
-                Console.WriteLine("Do you want to:");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine($"1. Add a new item to the current {_containerManager.ActiveContainerType} container?");
-                Console.WriteLine("2. Switch to a different container type (will clear current items if different)?");
-                Console.WriteLine("3. Create a new, empty container of the same type (will clear current items)?");
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                string choice = InputReader.ReadString("Enter choice (1, 2, 3, or any other key to cancel): ", true);
-                Console.ResetColor();
-
-                switch (choice)
-                {
-                    case "1": 
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"\nProceeding with the active {_containerManager.ActiveContainerType} container.");
-                        Console.ResetColor();
-                        proceedWithManualInput = true;
-                        break;
-                    case "2": 
-                        ContainerType newChosenType = _containerManager.AskContainerTypeSelection();
-                        if (newChosenType != ContainerType.None)
-                        {
-                            if (_containerManager.SelectOrInitializeContainer(newChosenType, forceNew: false))
-                            {
-                                proceedWithManualInput = true;
-                            }
-                        }
-                        break;
-                    case "3": 
-                        if (_containerManager.SelectOrInitializeContainer(_containerManager.ActiveContainerType, forceNew: true))
-                        {
-                            proceedWithManualInput = true;
-                        }
-                        break;
-                    default:
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("Manual input cancelled.");
-                        Console.ResetColor();
-                        break;
-                }
-            }
-
-            if (proceedWithManualInput)
-            {
-                Console.WriteLine($"\n--- Manual Input for {_containerManager.ActiveContainerType} Container ---");
-                IName? newItem = _dataFactory.CreateItemManually();
-                if (newItem != null)
-                {
-                    _containerManager.AddItemToActive(newItem); 
-                }
-            }
         }
-
-        private int GetCurrentItemCountForConfirmation()
-        {
-            return _containerManager.GetActiveContainerCount();
-        }
-
 
         public void HandleShowContainer()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Show {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.IsActiveContainerEmpty()) return;
-
-            _displayManager.DisplayCollectionInTable(
-                _containerManager.GetActiveItems(),
-                $"{_containerManager.ActiveContainerType} Container Contents ({_containerManager.GetActiveContainerCount()} items)"
-            );
+            var items = _containerManager.GetAll().ToList();
+            if (!items.Any())
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("Container is empty.");
+                Console.ResetColor();
+                return;
+            }
+            _displayManager.DisplayCollectionInTable(items, $"Contents of {_containerManager.GetActiveContainerTypeName()} Container");
         }
 
         public void HandleGetElementByInsertionId()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Get Element by Insertion ID from {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.IsActiveContainerEmpty()) return;
-
-            int maxId = _containerManager.GetNextAvailableInsertionId();
-            if (maxId == 0)
+            int oneBasedId = InputReader.ReadInt("Enter Insertion ID (1-based): ", 1);
+            Product? item = _containerManager.GetByInsertionId(oneBasedId - 1); 
+            if (item != null)
             {
-                ConsoleUI.PrintErrorMessage("Container is empty or no IDs assigned yet.");
-                return;
+                _displayManager.DisplayItemTable(oneBasedId, item);
             }
-
-            try
+            else
             {
-                int userInputId = InputReader.ReadInt($"Enter insertion ID (1 to {maxId}): ", 1, maxId);
-                int zeroBasedId = userInputId - 1;
-
-                IName? item = _containerManager.FindItemByZeroBasedInsertionId(zeroBasedId);
-
-                if (item == null)
-                {
-                    ConsoleUI.PrintErrorMessage($"Item with insertion ID {userInputId} not found.");
-                    return;
-                }
-
-                int currentIndex = _containerManager.FindIndexByReferenceInActive(item);
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\nItem Details (Insertion ID: {userInputId}, Current Index: {(currentIndex != -1 ? (currentIndex + 1).ToString() : "Unknown")}):");
-                Console.ResetColor();
-                _displayManager.DisplayItemTable(userInputId, item);
+                ConsoleUI.PrintErrorMessage($"No item found with Insertion ID {oneBasedId}.");
             }
-            catch (FormatException) { /* Handled */ }
-            catch (ValueLessThanZero) { /* Handled */ }
         }
 
         public void HandleGetElementByName()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Get Elements by Name from {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.IsActiveContainerEmpty()) return;
-
-            string name = InputReader.ReadString("Enter the Name to search for: ");
-            if (string.IsNullOrWhiteSpace(name))
+            string prefix = InputReader.ReadString("Enter name prefix to search for: ");
+            var items = _containerManager.GetByNamePrefix(prefix).ToList();
+            if (!items.Any())
             {
-                ConsoleUI.PrintErrorMessage("Invalid input. Name cannot be empty.");
-                return;
-            }
-
-            var itemsFound = _containerManager.FindItemsByNameInActive(name).ToList();
-
-            if (itemsFound.Any())
-            {
-                _displayManager.DisplayCollectionInTable(itemsFound, $"Found {itemsFound.Count} element(s) with Name '{name}'");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"No items found with name starting with '{prefix}'.");
+                Console.ResetColor();
             }
             else
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"No elements found with Name '{name}'.");
-                Console.ResetColor();
+                _displayManager.DisplayCollectionInTable(items, $"Items with name starting with '{prefix}'");
             }
+        }
+
+        private int? FindInsertionIdForItem(Product itemToFind)
+        {
+            
+            
+            
+            
+            
+            int maxPossibleId = _containerManager.GetNextInsertionId();
+            for (int i = 0; i < maxPossibleId; i++)
+            {
+                if (ReferenceEquals(_containerManager.GetByInsertionId(i), itemToFind))
+                {
+                    return i;
+                }
+            }
+            return null; 
         }
 
         public void HandleChangeItemByInsertionId()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Change Item by Insertion ID in {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.IsActiveContainerEmpty()) return;
-
-            int maxId = _containerManager.GetNextAvailableInsertionId();
-            if (maxId == 0)
+            int oneBasedId = InputReader.ReadInt("Enter Insertion ID of item to change (1-based): ", 1);
+            int zeroBasedId = oneBasedId - 1;
+            Product? item = _containerManager.GetByInsertionId(zeroBasedId);
+            if (item != null)
             {
-                ConsoleUI.PrintErrorMessage("Container is empty or no IDs assigned yet.");
-                return;
+                Console.WriteLine("Current item details:");
+                _displayManager.DisplayItemTable(oneBasedId, item);
+                _propertyEditor.ModifyProperty(item, zeroBasedId);
             }
-
-            try
+            else
             {
-                int userInputId = InputReader.ReadInt($"Enter item insertion ID to modify (1 to {maxId}): ", 1, maxId);
-                int zeroBasedId = userInputId - 1;
-
-                IName? itemToModify = _containerManager.FindItemByZeroBasedInsertionId(zeroBasedId);
-
-                if (itemToModify == null)
-                {
-                    ConsoleUI.PrintErrorMessage($"Item with insertion ID {userInputId} not found.");
-                    return;
-                }
-
-                int currentIndex = _containerManager.FindIndexByReferenceInActive(itemToModify);
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\nCurrent item details (Insertion ID: {userInputId}, Current Index: {(currentIndex != -1 ? (currentIndex + 1).ToString() : "Unknown")}):");
-                Console.ResetColor();
-                _displayManager.DisplayItemTable(userInputId, itemToModify);
-
-                _propertyEditor.ModifyProperty(itemToModify, zeroBasedId);
+                ConsoleUI.PrintErrorMessage($"No item found with Insertion ID {oneBasedId}.");
             }
-            catch (FormatException) { /* Handled */ }
-            catch (ValueLessThanZero) { /* Handled */ }
         }
 
         public void HandleChangeItemByName()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Change Item by Name in {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.IsActiveContainerEmpty()) return;
+            string name = InputReader.ReadString("Enter exact name of item to change: ");
+            var matchingItems = _containerManager.FindAll(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
 
-            string name = InputReader.ReadString("Enter the Name of the item(s) to modify: ");
-            if (string.IsNullOrWhiteSpace(name))
+            if (!matchingItems.Any())
             {
-                ConsoleUI.PrintErrorMessage("Name cannot be empty.");
+                ConsoleUI.PrintErrorMessage($"No item found with name '{name}'.");
                 return;
             }
 
-            List<IName> itemsFound = _containerManager.FindItemsByNameInActive(name).ToList();
+            Product? itemToChange;
+            int? itemZeroBasedInsertionId = null;
 
-            if (!itemsFound.Any())
+            if (matchingItems.Count == 1)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"No valid elements found matching Name '{name}'.");
-                Console.ResetColor();
-                return;
-            }
-
-            IName itemToModify;
-            int itemZeroBasedInsertionId;
-
-            if (itemsFound.Count == 1)
-            {
-                itemToModify = itemsFound[0];
+                itemToChange = matchingItems.First();
+                itemZeroBasedInsertionId = FindInsertionIdForItem(itemToChange);
             }
             else
             {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\nFound {itemsFound.Count} items with Name '{name}'. Please choose which one to modify:");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Multiple items found with name '{name}'. Please select which one to modify by its displayed table ID:");
                 Console.ResetColor();
-                for (int i = 0; i < itemsFound.Count; i++)
-                {
-                    int currentIdx = _containerManager.FindIndexByReferenceInActive(itemsFound[i]);
-                    Console.WriteLine($"{i + 1}. (Index: {currentIdx + 1}) {itemsFound[i].ToString() ?? "N/A"}");
-                }
-                try
-                {
-                    int choice = InputReader.ReadInt($"Enter choice (1 to {itemsFound.Count}): ", 1, itemsFound.Count);
-                    itemToModify = itemsFound[choice - 1];
-                }
-                catch (FormatException) { return; }
-                catch (ValueLessThanZero) { return; }
+
+                
+                _displayManager.DisplayCollectionInTable(matchingItems.Cast<IName>(), "Matching Items - Select One");
+
+                int choice = InputReader.ReadInt($"Enter table ID (1 to {matchingItems.Count}) to modify: ", 1, matchingItems.Count);
+                itemToChange = matchingItems[choice - 1];
+                itemZeroBasedInsertionId = FindInsertionIdForItem(itemToChange);
             }
 
-            itemZeroBasedInsertionId = _containerManager.GetZeroBasedInsertionIdForItemInActive(itemToModify);
-            if (itemZeroBasedInsertionId == -1)
+            if (itemToChange != null)
             {
-                ConsoleUI.PrintErrorMessage("Could not determine insertion ID for the selected item.");
-                return;
+                Console.WriteLine("\nCurrent item details selected for modification:");
+                _displayManager.DisplayItemTable(itemZeroBasedInsertionId.HasValue ? itemZeroBasedInsertionId.Value + 1 : 0, itemToChange);
+                _propertyEditor.ModifyProperty(itemToChange, itemZeroBasedInsertionId);
             }
-            int currentPhysicalIndex = _containerManager.FindIndexByReferenceInActive(itemToModify);
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\nSelected item (Current Index: {currentPhysicalIndex + 1}, Insertion ID: {itemZeroBasedInsertionId + 1}):");
-            Console.ResetColor();
-            _displayManager.DisplayItemTable(currentPhysicalIndex + 1, itemToModify);
-            _propertyEditor.ModifyProperty(itemToModify, itemZeroBasedInsertionId);
+            else
+            {
+                ConsoleUI.PrintErrorMessage($"Could not select an item with name '{name}' for modification.");
+            }
         }
 
 
         public void HandleSortContainer()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Sorting {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.IsActiveContainerEmpty()) return;
-
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Select sort parameter:");
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("1. Sort by Name");
-            Console.WriteLine("2. Sort by Price");
+            Console.WriteLine("Sort by:");
+            Console.WriteLine("1. Name");
+            Console.WriteLine("2. Price");
             Console.ResetColor();
-            string? sortChoice = InputReader.ReadString("Enter choice (1 or 2): ", true);
+            string? choice = Console.ReadLine();
+            Comparison<Product>? comparison = null;
 
-            Comparison<IName>? comparison = null;
-            string sortParameter = "";
-
-            switch (sortChoice)
+            switch (choice)
             {
                 case "1":
-                    comparison = AppComparisons.NameComparison;
-                    sortParameter = "Name";
+                    comparison = (p1, p2) => {
+                        if (p1 == null && p2 == null) return 0;
+                        if (p1 == null) return -1;
+                        if (p2 == null) return 1;
+                        return string.Compare(p1.Name, p2.Name, StringComparison.OrdinalIgnoreCase);
+                    };
                     break;
                 case "2":
-                    comparison = AppComparisons.PriceComparison;
-                    sortParameter = "Price";
+                    comparison = (p1, p2) => {
+                        if (p1 == null && p2 == null) return 0;
+                        if (p1 == null) return -1; 
+                        if (p2 == null) return 1;
+                        return p1.Price.CompareTo(p2.Price);
+                    };
                     break;
                 default:
                     ConsoleUI.PrintErrorMessage("Invalid sort choice.");
                     return;
             }
 
-            Console.WriteLine($"\nSorting by {sortParameter}...");
-            _containerManager.SortActiveContainer(comparison);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Container sorted by {sortParameter}.");
-            Console.ResetColor();
-            HandleShowContainer();
+            if (comparison != null)
+            {
+                _containerManager.SortActiveContainer(comparison);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Container sorted successfully.");
+                HandleShowContainer();
+            }
         }
 
         public void HandleRemoveElementByIndex()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Remove Element by Current Index from {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.IsActiveContainerEmpty()) return;
-
-            int currentCount = _containerManager.GetActiveContainerCount();
-            try
+            if (_containerManager.GetCount() == 0)
             {
-                int zeroBasedIndex = InputReader.ReadInt($"Enter element index to remove (0 to {currentCount - 1}): ", 0, currentCount - 1);
-
-                IName? itemToRemove = _containerManager.GetItemByCurrentZeroBasedIndexInActive(zeroBasedIndex);
-                int originalInsertionId = -1;
-                if (itemToRemove != null)
-                {
-                    originalInsertionId = _containerManager.GetZeroBasedInsertionIdForItemInActive(itemToRemove);
-                }
-
-                IName? removedItem = _containerManager.RemoveFromActiveByZeroBasedIndex(zeroBasedIndex);
-
-                if (removedItem != null)
-                {
-                    Console.ForegroundColor = ConsoleColor.DarkCyan;
-                    string idString = originalInsertionId != -1 ? $"(original Insertion ID: {originalInsertionId + 1})" : "(original Insertion ID unknown)";
-                    Console.WriteLine($"\nElement at index {zeroBasedIndex} {idString} was removed:");
-                    Console.WriteLine(removedItem.ToString() ?? "Removed item details unavailable.");
-                    Console.ResetColor();
-                }
-                else
-                {
-                    ConsoleUI.PrintErrorMessage($"Error: Failed to remove item at index {zeroBasedIndex}.");
-                }
-            }
-            catch (FormatException) { /* Handled */ }
-            catch (ValueLessThanZero) { /* Handled */ }
-        }
-
-        private void DisplayGeneratedSequence(IEnumerable<IName> items, string title, string emptyMessage)
-        {
-            if (_containerManager.IsActiveContainerEmpty(false))
-            {
-                _containerManager.IsActiveContainerEmpty(true);
+                ConsoleUI.PrintErrorMessage("Container is empty. Nothing to remove.");
                 return;
             }
-
-            var itemList = items.ToList();
-            _displayManager.DisplayCollectionInTable(itemList, title);
-            if (!itemList.Any())
+            int zeroBasedIndex = InputReader.ReadInt($"Enter current item index to remove (0 to {_containerManager.GetCount() - 1}): ", 0, _containerManager.GetCount() - 1);
+            if (_containerManager.RemoveByCurrentIndex(zeroBasedIndex))
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine(emptyMessage);
-                Console.ResetColor();
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"Item at index {zeroBasedIndex} removed successfully.");
             }
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Generator yielded {itemList.Count} items.");
-            Console.ResetColor();
+            else
+            {
+                ConsoleUI.PrintErrorMessage($"Failed to remove item at index {zeroBasedIndex}. It might not exist or an error occurred.");
+            }
         }
 
         public void HandleReverseGenerator()
         {
-            DisplayGeneratedSequence(
-                _containerManager.GetReverseIteratorForActive(),
-                $"Generator: Items in Reverse Order ({_containerManager.ActiveContainerType})",
-                "Reverse generator yielded no items."
-            );
+            var items = _containerManager.GetReverseEnumerable().ToList();
+            if (!items.Any() && _containerManager.GetCount() == 0) { ConsoleUI.PrintErrorMessage("Container is empty."); return; }
+            _displayManager.DisplayCollectionInTable(items, "Items in Reverse Order (Generator)");
         }
 
         public void HandleSublineGenerator()
         {
-            if (_containerManager.IsActiveContainerEmpty()) return;
-            string subline = InputReader.ReadString("Enter substring to search for in Name: ");
-            if (string.IsNullOrEmpty(subline))
-            {
-                ConsoleUI.PrintErrorMessage("Substring cannot be empty.");
-                return;
-            }
-            DisplayGeneratedSequence(
-                _containerManager.GetSublineIteratorForActive(subline),
-                $"Generator: Items with Name Containing '{subline}' ({_containerManager.ActiveContainerType})",
-                $"No items found with names containing '{subline}'."
-            );
+            string subline = InputReader.ReadString("Enter substring to search in names: ");
+            var items = _containerManager.GetEnumerableWithSublineInName(subline).ToList();
+            if (!items.Any() && _containerManager.GetCount() == 0 && !string.IsNullOrEmpty(subline)) { ConsoleUI.PrintErrorMessage($"No items found with '{subline}' in name, or container is empty."); return; }
+            if (!items.Any() && _containerManager.GetCount() == 0) { ConsoleUI.PrintErrorMessage("Container is empty."); return; }
+            _displayManager.DisplayCollectionInTable(items, $"Items with '{subline}' in Name (Generator)");
         }
 
         public void HandleSortedPriceGenerator()
         {
-            DisplayGeneratedSequence(
-                _containerManager.GetSortedByPriceIteratorForActive(),
-                $"Generator: Items Sorted by Price ({_containerManager.ActiveContainerType})",
-                "Sorted by Price generator yielded no items."
-            );
+            var items = _containerManager.GetSortedByPriceEnumerable().ToList();
+            if (!items.Any() && _containerManager.GetCount() == 0) { ConsoleUI.PrintErrorMessage("Container is empty."); return; }
+            _displayManager.DisplayCollectionInTable(items, "Items Sorted by Price (Generator)");
         }
 
         public void HandleSortedNameGenerator()
         {
-            DisplayGeneratedSequence(
-                _containerManager.GetSortedByNameIteratorForActive(),
-                $"Generator: Items Sorted by Name ({_containerManager.ActiveContainerType})",
-                "Sorted by Name generator yielded no items."
-            );
+            var items = _containerManager.GetSortedArrayByNameEnumerable().ToList(); 
+            if (!items.Any() && _containerManager.GetCount() == 0) { ConsoleUI.PrintErrorMessage("Container is empty."); return; }
+            _displayManager.DisplayCollectionInTable(items, "Items Sorted by Name (Generator)");
         }
 
         public void HandleFindFirstElement()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Find First Element in {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.IsActiveContainerEmpty()) return;
+            decimal minPrice = InputReader.ReadDecimal("Enter minimum price for search: ", 0.01m);
+            Predicate<Product> predicate = p => p.Price > minPrice;
+            Product? item = _containerManager.FindFirst(predicate);
 
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Select search criterion:");
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("1. By Exact Name");
-            Console.WriteLine("2. By Price");
-            Console.WriteLine("3. By Class Type Name");
-            Console.ResetColor();
-            string? choice = InputReader.ReadString("Enter choice: ", true);
-
-            Predicate<IName>? predicate = null;
-            string criteriaDescription = "";
-
-            try
-            {
-                switch (choice)
-                {
-                    case "1":
-                        string searchName = InputReader.ReadString("Enter exact Name to find: ");
-                        predicate = item => item.Name.Equals(searchName, StringComparison.OrdinalIgnoreCase);
-                        criteriaDescription = $"Exact Name = '{searchName}'";
-                        break;
-                    case "2":
-                        decimal priceThreshold = InputReader.ReadDecimal("Enter Price to find: ", 0.00001m);
-                        predicate = item => item.Price == priceThreshold;
-                        criteriaDescription = $"Price = {priceThreshold:N2}";
-                        break;
-                    case "3":
-                        string typeName = InputReader.ReadString("Enter Class Type Name (e.g., Apartment, Product): ");
-                        predicate = item => item.GetType().Name.Equals(typeName, StringComparison.OrdinalIgnoreCase);
-                        criteriaDescription = $"Class Type = '{typeName}'";
-                        break;
-                    default:
-                        ConsoleUI.PrintErrorMessage("Invalid choice.");
-                        return;
-                }
-            }
-            catch (ArgumentException ex) { ConsoleUI.PrintErrorMessage(ex.Message); return; }
-            catch (FormatException) { return; }
-            catch (ValueLessThanZero) { return; }
-
-
-            IName? foundItem = _containerManager.FindFirstInActive(predicate!);
-            if (foundItem != null)
+            if (item != null)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\nFirst element found matching criterion ({criteriaDescription}):");
-                Console.ResetColor();
-                int currentIndex = _containerManager.FindIndexByReferenceInActive(foundItem);
-                _displayManager.DisplayItemTable(currentIndex != -1 ? currentIndex + 1 : 1, foundItem);
+                Console.WriteLine($"First item found matching criteria (Price > {minPrice:C}):");
+                var insertionId = FindInsertionIdForItem(item);
+                _displayManager.DisplayItemTable(insertionId.HasValue ? insertionId.Value + 1 : 0, item);
             }
             else
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"\nNo element found matching criterion ({criteriaDescription}).");
-                Console.ResetColor();
+                ConsoleUI.PrintErrorMessage($"No item found with price > {minPrice:C}.");
             }
         }
 
         public void HandleFindAllElements()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Find All Elements in {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.IsActiveContainerEmpty()) return;
+            decimal maxPrice = InputReader.ReadDecimal("Enter maximum price for search: ", 0.01m);
+            Predicate<Product> predicate = p => p.Price < maxPrice;
+            var items = _containerManager.FindAll(predicate).ToList();
 
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Select search criterion:");
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("1. By Exact Name");
-            Console.WriteLine("2. By Price");
-            Console.WriteLine("3. By Class Type Name");
-            Console.WriteLine("4. By Name Containing Substring");
-            Console.ResetColor();
-            string? choice = InputReader.ReadString("Enter choice: ", true);
-
-            Predicate<IName>? predicate = null;
-            string criteriaDescription = "";
-            try
+            if (!items.Any())
             {
-                switch (choice)
-                {
-                    case "1":
-                        string searchName = InputReader.ReadString("Enter exact Name to find: ");
-                        predicate = item => item.Name.Equals(searchName, StringComparison.OrdinalIgnoreCase);
-                        criteriaDescription = $"Exact Name = '{searchName}'";
-                        break;
-                    case "2":
-                        decimal priceThreshold = InputReader.ReadDecimal("Enter Price to find: ", 0.00001m);
-                        predicate = item => item.Price == priceThreshold;
-                        criteriaDescription = $"Price = {priceThreshold:N2}";
-                        break;
-                    case "3":
-                        string typeName = InputReader.ReadString("Enter Class Type Name (e.g., Apartment, Product): ");
-                        predicate = item => item.GetType().Name.Equals(typeName, StringComparison.OrdinalIgnoreCase);
-                        criteriaDescription = $"Class Type = '{typeName}'";
-                        break;
-                    case "4":
-                        string subName = InputReader.ReadString("Enter substring for Name: ");
-                        predicate = item => item.Name.IndexOf(subName, StringComparison.OrdinalIgnoreCase) >= 0;
-                        criteriaDescription = $"Name containing '{subName}'";
-                        break;
-                    default:
-                        ConsoleUI.PrintErrorMessage("Invalid choice.");
-                        return;
-                }
+                ConsoleUI.PrintErrorMessage($"No items found with price < {maxPrice:C}.");
+                return;
             }
-            catch (ArgumentException ex) { ConsoleUI.PrintErrorMessage(ex.Message); return; }
-            catch (FormatException) { return; }
-            catch (ValueLessThanZero) { return; }
-
-
-            var foundItems = _containerManager.FindAllInActive(predicate!).ToList();
-            if (foundItems.Any())
-            {
-                _displayManager.DisplayCollectionInTable(foundItems, $"Found {foundItems.Count} element(s) matching criterion ({criteriaDescription})");
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"\nNo elements found matching criterion ({criteriaDescription}).");
-                Console.ResetColor();
-            }
+            _displayManager.DisplayCollectionInTable(items, $"Items with Price < {maxPrice:C}");
         }
 
         public void HandleSerializeContainer()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Serialize Active {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-
-            object? activeContainerObject = _containerManager.GetActiveContainerForSerialization();
-            if (activeContainerObject == null || _containerManager.IsActiveContainerEmpty(false))
+            object? container = _containerManager.GetActiveContainerForSerialization();
+            if (container == null || _containerManager.GetCount() == 0)
             {
-                ConsoleUI.PrintErrorMessage("No active and non-empty container to serialize.");
-                if (_containerManager.ActiveContainerType != ContainerType.None && _containerManager.IsActiveContainerEmpty(false))
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("The active container is empty.");
-                    Console.ResetColor();
-                }
+                ConsoleUI.PrintErrorMessage("Active container is empty or not initialized. Nothing to serialize.");
                 return;
             }
 
-            string? filename = InputReader.ReadString("Enter filename to save (without extension, e.g., 'mydata'): ", true)?.Trim();
-            if (string.IsNullOrWhiteSpace(filename))
+            string filename = InputReader.ReadString("Enter file name to save (e.g., data.bin): ");
+            try
             {
-                ConsoleUI.PrintErrorMessage("Invalid filename.");
-                return;
+                ContainerSerializer.SerializeContainer<Product>(container, filename);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"Container serialized to file '{filename}' successfully.");
             }
-            if (filename.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            catch (Exception ex)
             {
-                ConsoleUI.PrintErrorMessage($"Filename '{filename}' contains invalid characters.");
-                return;
+                ConsoleUI.PrintErrorMessage($"Serialization error: {ex.Message}");
             }
-
-            string fullPath = ContainerSerializer.SerializeContainer(activeContainerObject, filename);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Container successfully serialized to: {fullPath}");
-            Console.ResetColor();
+            finally
+            {
+                Console.ResetColor();
+            }
         }
 
         public void HandleDeserializeContainer()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n--- Deserialize Container from File ---");
-            Console.ResetColor();
-            string? filename = InputReader.ReadString("Enter filename to load (without extension, e.g., 'mydata'): ", true)?.Trim();
-            if (string.IsNullOrWhiteSpace(filename))
+            string filename = InputReader.ReadString("Enter file name to load (e.g., data.bin): ");
+            if (!File.Exists(filename))
             {
-                ConsoleUI.PrintErrorMessage("Invalid filename.");
-                return;
-            }
-            if (filename.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            {
-                ConsoleUI.PrintErrorMessage($"Filename '{filename}' contains invalid characters.");
+                ConsoleUI.PrintErrorMessage($"File '{filename}' does not exist.");
                 return;
             }
 
-            object deserializedContainerObj = ContainerSerializer.DeserializeContainer(filename);
-
-            if (deserializedContainerObj == null)
+            try
             {
-                Console.WriteLine("Deserialization resulted in a null container.");
-                return;
-            }
-
-            int loadedItemCount = 0;
-            ContainerType deserializedType = ContainerType.None;
-
-            if (deserializedContainerObj is Container<IName> da) { loadedItemCount = da.GetCount(); deserializedType = ContainerType.Array; }
-            else if (deserializedContainerObj is ContainerLinkedList<IName> dl) { loadedItemCount = dl.GetCount(); deserializedType = ContainerType.LinkedList; }
-            else { ConsoleUI.PrintErrorMessage($"Deserialization returned an unrecognized object type: {deserializedContainerObj.GetType().Name}"); return; }
-
-
-            if (loadedItemCount == 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Deserialized {deserializedType} container is empty.");
-            }
-            else
-            {
+                object deserialized = ContainerSerializer.DeserializeContainer<Product>(filename);
+                _containerManager.ReplaceActiveContainerWithDeserialized(deserialized);
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"Successfully deserialized {loadedItemCount} items into a {deserializedType} container.");
-                Console.ResetColor();
-            }
-
-            bool switchConfirmed = true;
-            if (_containerManager.ActiveContainerType != ContainerType.None && _containerManager.GetActiveContainerCount() > 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                switchConfirmed = InputReader.ReadBool($"Replace the current {_containerManager.ActiveContainerType} container with the deserialized data? (y/n): ");
-            }
-
-            if (switchConfirmed)
-            {
-                _containerManager.ReplaceActiveContainerWithDeserialized(deserializedContainerObj);
+                Console.WriteLine($"Container deserialized from file '{filename}' successfully.");
                 HandleShowContainer();
             }
-            else
+            catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("Switch cancelled. Keeping the current active container.");
+                ConsoleUI.PrintErrorMessage($"Deserialization error: {ex.Message}");
+            }
+            finally
+            {
                 Console.ResetColor();
             }
         }
 
         public void HandleShowTotalPrice()
         {
+            decimal totalPrice = _containerManager.GetTotalPrice();
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Total Price in {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.ActiveContainerType == ContainerType.None)
-            {
-                ConsoleUI.PrintErrorMessage("No active container.");
-                return;
-            }
-            if (_containerManager.IsActiveContainerEmpty()) return;
-
-            decimal totalPrice = _containerManager.GetTotalPriceOfActive();
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"Total Price of all items: {totalPrice:N2}");
+            Console.WriteLine($"Total price of all items in the active container: {totalPrice:C}");
             Console.ResetColor();
         }
 
         public void HandleFindMinMaxProduct()
         {
+            var items = _containerManager.GetAll().ToList();
+            if (!items.Any())
+            {
+                ConsoleUI.PrintErrorMessage("Container is empty. Cannot find min/max.");
+                return;
+            }
+
+            Product? minPriceProduct = null;
+            Product? maxPriceProduct = null;
+
+            if (items.Any())
+            { 
+                minPriceProduct = items[0];
+                maxPriceProduct = items[0];
+                foreach (var item in items.Skip(1))
+                {
+                    if (item.Price < minPriceProduct.Price) minPriceProduct = item;
+                    if (item.Price > maxPriceProduct.Price) maxPriceProduct = item;
+                }
+            }
+
+
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Minimum and Maximum Price in {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.ActiveContainerType == ContainerType.None)
+            Console.WriteLine("Product with Minimum Price:");
+            if (minPriceProduct != null)
             {
-                ConsoleUI.PrintErrorMessage("No active container.");
-                return;
+                var insertionId = FindInsertionIdForItem(minPriceProduct);
+                _displayManager.DisplayItemTable(insertionId.HasValue ? insertionId.Value + 1 : 0, minPriceProduct);
             }
-            if (_containerManager.IsActiveContainerEmpty()) return;
+            else Console.WriteLine("N/A");
 
-            var prices = from product in _containerManager.GetActiveItems()
-                         where product != null
-                         select product.Price;
-
-            if (!prices.Any())
+            Console.WriteLine("\nProduct with Maximum Price:");
+            if (maxPriceProduct != null)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("No items with prices found in the container.");
-                Console.ResetColor();
-                return;
+                var insertionId = FindInsertionIdForItem(maxPriceProduct);
+                _displayManager.DisplayItemTable(insertionId.HasValue ? insertionId.Value + 1 : 0, maxPriceProduct);
             }
-
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write("The Minimal Price is: ");
+            else Console.WriteLine("N/A");
             Console.ResetColor();
-            Console.WriteLine($"{prices.Min():N2}");
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write("The Maximum Price is: ");
-            Console.ResetColor();
-            Console.WriteLine($"{prices.Max():N2}");
         }
 
         public void HandleFindAverageCategoriesPrice()
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n--- Average Price for each Category in {_containerManager.ActiveContainerType} Container ---");
-            Console.ResetColor();
-            if (_containerManager.ActiveContainerType == ContainerType.None)
+            var items = _containerManager.GetAll().ToList();
+            if (!items.Any())
             {
-                ConsoleUI.PrintErrorMessage("No active container.");
+                ConsoleUI.PrintErrorMessage("Container is empty. Cannot calculate average prices.");
                 return;
             }
-            if (_containerManager.IsActiveContainerEmpty()) return;
-            
-            var averagePrices = from IName product in _containerManager.GetActiveItems()
-                                where product != null
-                                group product by product.GetType().Name into g
-                                select new
-                                {
-                                    Category = g.Key,
-                                    AveragePrice = g.Average(p => p.Price)
-                                };
 
-            _displayManager.DisplayAveragePrices(averagePrices, "Average Prices by Category");
+            var averagePrices = items
+                .GroupBy(item => item.GetType().Name) 
+                .Select(group => new
+                {
+                    Category = group.Key,
+                    AveragePrice = group.Average(item => item.Price)
+                })
+                .OrderBy(g => g.Category)
+                .Cast<dynamic>() 
+                .ToList();
+
+            _displayManager.DisplayAveragePrices(averagePrices, "Average Price by Category");
         }
     }
 }

@@ -2,7 +2,7 @@
 
 namespace IRT.Classes
 {
-    class LandPlot : RealEstateInvestment, IName<LandPlot>, ICustomSerializable
+    public class LandPlot : RealEstateInvestment, ICustomSerializable
     {
         public string SoilType { get; set; }
         public bool InfrastructureAccess { get; set; }

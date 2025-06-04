@@ -8,7 +8,6 @@ namespace IRT.ConsoleOutput
 {
     public class DisplayManager
     {
-
         private const int idWidth = 6;
         private const int classWidth = 20;
         private const int nameWidth = 20;
@@ -42,6 +41,7 @@ namespace IRT.ConsoleOutput
             generalTableWidth = CalculateGeneralTableWidth();
             averagePriceTableWidth = avgPriceCategoryColWidth + avgPriceValueColWidth + 3;
         }
+
 
         private int CalculateGeneralTableWidth()
         {

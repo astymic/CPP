@@ -2,7 +2,7 @@
 
 namespace IRT.Classes
 {
-    class Apartment : RealEstate, IName<Apartment>, ICustomSerializable
+    public class Apartment : RealEstate, ICustomSerializable
     {
         public int FloorNumber { get; set; }
         public decimal HOAFees { get; set; }

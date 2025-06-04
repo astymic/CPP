@@ -1,21 +1,28 @@
 ﻿using IRT.Interfaces;
+using System;
 
 namespace IRT.Classes
 {
-    class Product : IName, IName<Product>, IPrice, ICustomSerializable
+    public class Product : IName, IName<Product>, IPrice, ICustomSerializable
     {
         public string Name { get; set; }
+        string IName<Product>.Name 
+        { 
+            get => Name;
+            set => Name = value;
+        }
         private decimal price;
         public decimal Price
         {
             get => price;
             set
             {
+                if (value <= 0) throw new ValueLessThanZero(nameof(Price)); 
                 if (price != value)
                 {
                     var oldPrice = price;
                     price = value;
-                    PriceChanged?.Invoke(this, oldPrice);
+                    PriceChanged?.Invoke(this, oldPrice); 
                 }
             }
         }
@@ -23,32 +30,47 @@ namespace IRT.Classes
         public Product()
         {
             Name = string.Empty;
-            Price = 0;
+            price = 0; 
         }
 
         public Product(string name, decimal price)
         {
             if (price <= 0) throw new ValueLessThanZero("Price");
             Name = name;
-            Price = price;
+            this.price = price; 
+                                
         }
 
         public override string ToString()
-
         {
             return $"{Name}, Price: {Price}";
         }
 
-        public int CompareTo(object obj) 
+        
+        public int CompareTo(object? obj)
         {
             if (obj == null) return 1;
 
-            if (obj is not IName otherProduct)
+            if (obj is not IName<Product> otherProduct)
             {
-                throw new ArgumentException($"Object must be type {nameof(IName)}");
+                throw new ArgumentException($"Object must be type {nameof(IName<Product>)}");
             }
             return StringComparer.OrdinalIgnoreCase.Compare(this.Name, otherProduct.Name);
         }
+
+        
+        public int CompareTo(Product? other)
+        {
+            if (other == null) return 1;
+            
+            int nameCompare = StringComparer.OrdinalIgnoreCase.Compare(this.Name, other.Name);
+            if (nameCompare != 0)
+            {
+                return nameCompare;
+            }
+            return this.Price.CompareTo(other.Price);
+        }
+
 
         public void Serialize(BinaryWriter writer)
         {
@@ -58,11 +80,15 @@ namespace IRT.Classes
 
         public static Product Deserialize(BinaryReader reader)
         {
-            return new Product
+            
+            var product = new Product
             {
-                Name = reader.ReadString(),
-                Price = reader.ReadDecimal()
+                Name = reader.ReadString()
             };
+            
+            product.price = reader.ReadDecimal();
+            if (product.price <= 0) throw new ValueLessThanZero("Price", "read from file"); 
+            return product;
         }
 
         public event EventHandler<decimal>? PriceChanged;

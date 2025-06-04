@@ -1,125 +1,47 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using IRT.Interfaces;
-using IRT.Classes;
-using System.Reflection;
-using System.Reflection.PortableExecutable;
-using System.ComponentModel;
 
-namespace IRT;
-
-public static class ContainerSerializer
+namespace IRT
 {
-    public static string SerializeContainer(object container, string name)
+    public static class ContainerSerializer
     {
-        using FileStream stream = new FileStream($"{name}.bin", FileMode.Create);
-        using BinaryWriter writer = new BinaryWriter(stream);
-
-        int count;
-        string containerType;
-        IEnumerable<IName> _containerEnumerable; 
-
-        switch (container)
+        public static void SerializeContainer<T>(object container, string filename)
+            where T : IName, IName<T>, IPrice, ICustomSerializable
         {
-            case Container<IName> array:
-                count = array.GetCount();
-                _containerEnumerable = array;
-                containerType = typeof(Container<IName>).Name;
-                break;
-            case ContainerLinkedList<IName> linkedList:
-                count = linkedList.GetCount();
-                _containerEnumerable = linkedList;
-                containerType = typeof(ContainerLinkedList<IName>).Name;
-                break;
-            default:
-                throw new ArgumentException("Container is of an unknown type. Please select a supported container.");
-        }
+            using var fs = new FileStream(filename, FileMode.Create);
+            using var writer = new BinaryWriter(fs);
 
-        writer.Write(containerType.Split('`')[0]);
-        writer.Write(count);
-
-        foreach (var item in _containerEnumerable)
-        {
-            if (item is ICustomSerializable serializable)
+            if (container is Container<T> arrayContainer)
             {
-                writer.Write(item.GetType().Name);
-                serializable.Serialize(writer);
+                writer.Write("Array"); 
+                arrayContainer.Serialize(writer);
+            }
+            else if (container is ContainerLinkedList<T> linkedListContainer)
+            {
+                writer.Write("LinkedList"); 
+                linkedListContainer.Serialize(writer);
             }
             else
             {
-                throw new InvalidOperationException($"Type {item.GetType().Name} isn't serializable");
+                throw new ArgumentException("Unknown container type!");
             }
         }
 
-        stream.Close();
-        return stream.Name;
-    }
-
-    static readonly Dictionary<string, Func<BinaryReader, IName>> Deserializers = new()
-    {
-        { "Product", reader => Product.Deserialize(reader) },
-        { "RealEstate", reader => RealEstate.Deserialize(reader) },
-        { "RealEstateInvestment", reader => RealEstateInvestment.Deserialize(reader) },
-        { "Apartment", reader => Apartment.Deserialize(reader) },
-        { "House", reader => House.Deserialize(reader) },
-        { "Hotel", reader => Hotel.Deserialize(reader) },
-        { "LandPlot", reader => LandPlot.Deserialize(reader) }
-    };
-
-    public static object DeserializeContainer(string name) 
-    {
-        string filePath = $"{name}.bin";
-        if (!File.Exists(filePath)) throw new FileNotFoundException($"File '{filePath}' doesn't exist");
-
-        using FileStream stream = new FileStream(filePath, FileMode.Open);
-        using BinaryReader reader = new BinaryReader(stream);
-
-        string containerType = reader.ReadString();
-        int count = reader.ReadInt32();
-
-        var containerFactories = new Dictionary<string, Func<dynamic>>
+        public static object DeserializeContainer<T>(string filename)
+            where T : IName, IName<T>, IPrice, ICustomSerializable
         {
-            { "Container", () => new Container<IName>() },
-            { "ContainerLinkedList", () => new ContainerLinkedList<IName>() },
-        };
+            using var fs = new FileStream(filename, FileMode.Open);
+            using var reader = new BinaryReader(fs);
 
-        if (!containerFactories.TryGetValue(containerType, out var containerFactory))
-            throw new InvalidDataException($"Unknown container type {containerType}");
-
-        dynamic deserializedContainer = containerFactory(); 
-
-        for (int i = 0; i < count; i++)
-        {
-            string typeName = reader.ReadString();
-
-            if (Deserializers.TryGetValue(typeName, out var deserializer))
-            {
-                var item = deserializer(reader);
-                
-                if (deserializedContainer is Container<IName> cArray)
-                {
-                    cArray.Add(item);
-                }
-                else if (deserializedContainer is ContainerLinkedList<IName> cList)
-                {
-                    cList.AddLast(item);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Deserialized container does not support adding items in this way.");
-                }
-            }
+            string containerType = reader.ReadString();
+            if (containerType == "Array")
+                return Container<T>.Deserialize(reader);
+            else if (containerType == "LinkedList")
+                return ContainerLinkedList<T>.Deserialize(reader);
             else
-            {
-                
-                System.Diagnostics.Debug.WriteLine($"Warning: Unknown type '{typeName}' encountered during deserialization. Item skipped.");
-            }
+                throw new InvalidOperationException("Unknown container type in file");
         }
-
-        stream.Close();
-        return deserializedContainer; 
     }
 }

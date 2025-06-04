@@ -2,7 +2,7 @@
 
 namespace IRT.Classes
 {
-    class House : RealEstate, IName<House>, ICustomSerializable
+    public class House : RealEstate, ICustomSerializable
     {
         public double GardenSize { get; set; }
         public bool Pool { get; set; }

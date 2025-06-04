@@ -1,537 +1,259 @@
-﻿using IRT.Classes;
-using IRT.Interfaces;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+using System.Linq; 
+using IRT.Classes; 
+using IRT.Interfaces;
+using IRT.ConsoleOutput; 
 
-namespace IRT.ConsoleOutput
+namespace IRT
 {
-    public enum ContainerType
+    public enum ContainerType 
     {
-        None,
         Array,
         LinkedList
     }
 
-    public class ContainerManager
+    public class ContainerManager 
     {
-        private Container<IName>? _containerArray = null;
-        private ContainerLinkedList<IName>? _containerList = null;
-        public ContainerType ActiveContainerType { get; private set; } = ContainerType.None;
+        private Container<Product>? _containerArray;
+        private ContainerLinkedList<Product>? _containerList;
 
-        public bool SelectOrInitializeContainer(ContainerType chosenType, bool forceNew = false)
+        public ContainerType ActiveContainerType { get; private set; } = ContainerType.Array;
+
+        public ContainerManager()
         {
-            if (chosenType == ContainerType.None)
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("Operation cancelled by selecting no container type.");
-                Console.ResetColor();
-                return false;
-            }
+            _containerArray = new Container<Product>();
+            _containerList = null; 
+            ActiveContainerType = ContainerType.Array;
+        }
 
-            if (ActiveContainerType != chosenType || ActiveContainerType == ContainerType.None || forceNew)
+        public void SelectOrInitializeContainer(ContainerType type, bool forceNew = false)
+        {
+            ActiveContainerType = type; 
+            if (type == ContainerType.Array)
             {
-                bool switchConfirmed = true;
-                if (ActiveContainerType != ContainerType.None && ActiveContainerType != chosenType && !forceNew && GetActiveContainerCount() > 0)
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.Write($"Switching to {chosenType} container will clear the current {ActiveContainerType} container. Continue? (y/n): ");
-                    Console.ResetColor();
-                    switchConfirmed = Console.ReadLine()?.Trim().ToLower() == "y";
-                }
-
-                if (switchConfirmed)
-                {
-                    Console.ForegroundColor = ConsoleColor.Magenta;
-                    Console.WriteLine($"\nInitializing {chosenType} container...");
-                    Console.ResetColor();
-                    _containerArray = null;
-                    _containerList = null;
-                    ActiveContainerType = chosenType;
-                    if (ActiveContainerType == ContainerType.Array)
-                    {
-                        _containerArray = new Container<IName>();
-                    }
-                    else
-                    {
-                        _containerList = new ContainerLinkedList<IName>();
-                    }
-                    return true;
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("Switch cancelled. Keeping the current container.");
-                    Console.ResetColor();
-                    return false;
-                }
+                if (_containerArray == null || forceNew)
+                    _containerArray = new Container<Product>();
+                _containerList = null; 
             }
-            else
+            else if (type == ContainerType.LinkedList)
             {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\nContinuing with the active {ActiveContainerType} container.");
-                Console.ResetColor();
-                return true;
+                if (_containerList == null || forceNew)
+                    _containerList = new ContainerLinkedList<Product>();
+                _containerArray = null; 
             }
         }
 
-        public ContainerType AskContainerTypeSelection()
+        public object? GetActiveContainerForSerialization()
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("\nSelect Container Type:");
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("1. Array-based Container");
-            Console.WriteLine("2. Linked List Container");
-            Console.ResetColor();
-            string choice = InputReader.ReadString("Enter choice (1 or 2, or any other key to cancel): ", true);
-            return choice switch
+            return ActiveContainerType switch
             {
-                "1" => ContainerType.Array,
-                "2" => ContainerType.LinkedList,
-                _ => ContainerType.None,
+                ContainerType.Array => _containerArray,
+                ContainerType.LinkedList => _containerList,
+                _ => null
             };
         }
 
-        public int GetActiveContainerCount()
+        public void ReplaceActiveContainerWithDeserialized(object deserializedContainer)
         {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null)
-                return _containerArray.GetCount();
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
-                return _containerList.GetCount();
-            return 0;
-        }
-
-        public bool IsActiveContainerEmpty(bool printMessageIfEmpty = true)
-        {
-            if (ActiveContainerType == ContainerType.None)
+            if (deserializedContainer is Container<Product> newArray)
             {
-                if (printMessageIfEmpty) ConsoleUI.PrintErrorMessage("No container selected. Please use option 1 or 2 first.");
-                return true;
-            }
-
-            bool isEmpty = GetActiveContainerCount() == 0;
-            if (isEmpty && printMessageIfEmpty)
-            {
+                _containerArray = newArray;
+                _containerList = null;
+                ActiveContainerType = ContainerType.Array;
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("The active container is empty.");
-                Console.ResetColor();
+                Console.WriteLine("Loaded Array container as active.");
             }
-            return isEmpty;
-        }
-
-        public IEnumerable<IName> GetActiveItems()
-        {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null)
-                return _containerArray;
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
-                return _containerList;
-            return Enumerable.Empty<IName>();
-        }
-
-        public void AddItemToActive(IName item)
-        {
-            if (item == null) return;
-            int nextId = -1;
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null)
+            else if (deserializedContainer is ContainerLinkedList<Product> newList)
             {
-                _containerArray.Add(item);
-                nextId = _containerArray.GetInsertionId();
-            }
-            else if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
-            {
-                _containerList.AddLast(item);
-                nextId = _containerList.GetNextInsertionId();
+                _containerList = newList;
+                _containerArray = null;
+                ActiveContainerType = ContainerType.LinkedList;
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("Loaded LinkedList container as active.");
             }
             else
             {
-                ConsoleUI.PrintErrorMessage("Cannot add item: No active container or container not initialized.");
-                return;
+                Console.ForegroundColor = ConsoleColor.Red;
+                
+                Console.WriteLine("Deserialized object is not a valid container type!");
             }
-            Console.ForegroundColor = ConsoleColor.Green;
-
-
-            Console.WriteLine($"{item.GetType().Name} added successfully to {ActiveContainerType} Container (Insertion ID: {nextId}).");
             Console.ResetColor();
         }
 
-        public int GetNextAvailableInsertionId()
+        public void AddItemToActive(Product item) 
         {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null)
-                return _containerArray.GetInsertionId();
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
-                return _containerList.GetNextInsertionId();
-            return 0;
+            if (ActiveContainerType == ContainerType.Array)
+            {
+                _containerArray ??= new Container<Product>(); 
+                _containerArray.Add(item);
+            }
+            else
+            {
+                _containerList ??= new ContainerLinkedList<Product>(); 
+                _containerList.AddLast(item);
+            }
         }
 
-        public IName? FindItemByZeroBasedInsertionId(int zeroBasedId)
+        public bool RemoveByCurrentIndex(int zeroBasedIndex)
         {
-            if (zeroBasedId < 0) return null;
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null)
-                return _containerArray[zeroBasedId];
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
-                return _containerList[zeroBasedId];
-            return null;
+            try
+            {
+                if (ActiveContainerType == ContainerType.Array && _containerArray != null)
+                {
+                    if (zeroBasedIndex < 0 || zeroBasedIndex >= _containerArray.Count) return false;
+                    var removed = _containerArray.RemoveById(zeroBasedIndex);
+                    return removed != null;
+                }
+                else if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
+                {
+                    if (zeroBasedIndex < 0 || zeroBasedIndex >= _containerList.Count) return false;
+                    var removed = _containerList.RemoveByIndex(zeroBasedIndex);
+                    return removed != null;
+                }
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return false;
+            }
+            return false;
         }
 
-        public IEnumerable<IName> FindItemsByNameInActive(string name)
+        public Product? GetByInsertionId(int zeroBasedInsertionId) 
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?[zeroBasedInsertionId];
+            else
+                return _containerList?[zeroBasedInsertionId];
+        }
+
+        public void SetByInsertionId(int zeroBasedInsertionId, Product value) 
         {
             if (ActiveContainerType == ContainerType.Array && _containerArray != null)
             {
-                IName[]? found = _containerArray[name];
-                return found?.Where(i => i != null)! ?? Enumerable.Empty<IName>();
+                _containerArray[zeroBasedInsertionId] = value;
             }
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
+            else if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
             {
-                List<IName>? found = _containerList[name];
-                return found ?? Enumerable.Empty<IName>();
+                _containerList[zeroBasedInsertionId] = value;
             }
-            return Enumerable.Empty<IName>();
+            else
+            {
+                throw new InvalidOperationException("Active container is not initialized or item not found for update.");
+            }
         }
 
-        public void SortActiveContainer(Comparison<IName> comparison)
+
+        public int GetCount()
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.Count ?? 0;
+            else
+                return _containerList?.Count ?? 0;
+        }
+
+        public IEnumerable<Product> GetAll() 
+        {
+            if (ActiveContainerType == ContainerType.Array && _containerArray != null)
+                return _containerArray;
+            else if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
+                return _containerList;
+            else
+                return Enumerable.Empty<Product>();
+        }
+
+        public void Clear()
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                _containerArray = new Container<Product>();
+            else
+                _containerList = new ContainerLinkedList<Product>();
+        }
+
+        public ContainerType GetActiveContainerTypeEnum() => ActiveContainerType;
+
+        public string GetActiveContainerTypeName() => ActiveContainerType.ToString();
+
+        public void SortActiveContainer(Comparison<Product> comparison) 
         {
             if (ActiveContainerType == ContainerType.Array && _containerArray != null)
                 _containerArray.Sort(comparison);
             else if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
                 _containerList.Sort(comparison);
+            else 
+                Console.WriteLine("Container is empty or not initialized, nothing to sort.");
+        }
+
+        public IEnumerable<Product> GetReverseEnumerable()
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.GetReverseArray() ?? Enumerable.Empty<Product>();
             else
-                ConsoleUI.PrintErrorMessage("No active container to sort.");
+                return _containerList?.GetReverseArray() ?? Enumerable.Empty<Product>();
         }
 
-        public IName? RemoveFromActiveByZeroBasedIndex(int zeroBasedIndex)
+        public IEnumerable<Product> GetEnumerableWithSublineInName(string subline)
         {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null)
-                return _containerArray.RemoveById(zeroBasedIndex);
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
-                return _containerList.RemoveByIndex(zeroBasedIndex);
-            return null;
-        }
-
-        public IEnumerable<IName> GetReverseIteratorForActive()
-        {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null) return _containerArray.GetReverseArray();
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null) return _containerList.GetReverseArray();
-            return Enumerable.Empty<IName>();
-        }
-
-        public IEnumerable<IName> GetSublineIteratorForActive(string subline)
-        {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null) return _containerArray.GetArrayWithSublineInName(subline);
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null) return _containerList.GetArrayWithSublineInName(subline);
-            return Enumerable.Empty<IName>();
-        }
-
-        public IEnumerable<IName> GetSortedByPriceIteratorForActive()
-        {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null) return _containerArray.GetSortedByArrayPrice();
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null) return _containerList.GetSortedByArrayPrice();
-            return Enumerable.Empty<IName>();
-        }
-
-        public IEnumerable<IName> GetSortedByNameIteratorForActive()
-        {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null) return _containerArray.GetSortedArrayByName();
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null) return _containerList.GetSortedArrayByName();
-            return Enumerable.Empty<IName>();
-        }
-
-        public IName? FindFirstInActive(Predicate<IName> match)
-        {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null) return _containerArray.Find(match);
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null) return _containerList.Find(match);
-            return null;
-        }
-
-        public IEnumerable<IName> FindAllInActive(Predicate<IName> match)
-        {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null) return _containerArray.FindAll(match);
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null) return _containerList.FindAll(match);
-            return Enumerable.Empty<IName>();
-        }
-
-        public decimal GetTotalPriceOfActive()
-        {
-            if (ActiveContainerType == ContainerType.Array && _containerArray != null) return _containerArray.TotalPrice;
-            if (ActiveContainerType == ContainerType.LinkedList && _containerList != null) return _containerList.TotalPrice;
-            return 0m;
-        }
-
-        public object? GetActiveContainerForSerialization()
-        {
-            if (ActiveContainerType == ContainerType.Array) return _containerArray;
-            if (ActiveContainerType == ContainerType.LinkedList) return _containerList;
-            return null;
-        }
-
-        public void ReplaceActiveContainerWithDeserialized(object deserializedContainer)
-        {
-            if (deserializedContainer is Container<IName> newArray)
-            {
-                _containerArray = newArray;
-                _containerList = null;
-                ActiveContainerType = ContainerType.Array;
-                Console.ForegroundColor = ConsoleColor.Magenta;
-                Console.WriteLine($"Active container switched to the deserialized {ActiveContainerType} container.");
-            }
-            else if (deserializedContainer is ContainerLinkedList<IName> newList)
-            {
-                _containerList = newList;
-                _containerArray = null;
-                ActiveContainerType = ContainerType.LinkedList;
-                Console.ForegroundColor = ConsoleColor.Magenta;
-                Console.WriteLine($"Active container switched to the deserialized {ActiveContainerType} container.");
-            }
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.GetArrayWithSublineInName(subline) ?? Enumerable.Empty<Product>();
             else
-            {
-                ConsoleUI.PrintErrorMessage($"Deserialization returned an unexpected object type: {deserializedContainer.GetType().Name}");
-                return;
-            }
-            Console.ResetColor();
+                return _containerList?.GetArrayWithSublineInName(subline) ?? Enumerable.Empty<Product>();
         }
 
-
-        public int FindIndexByReferenceInActive(IName itemToFind)
+        public IEnumerable<Product> GetSortedByPriceEnumerable()
         {
-            if (itemToFind == null) return -1;
-            var items = GetActiveItems();
-            int index = 0;
-            foreach (var currentItem in items)
-            {
-                if (ReferenceEquals(currentItem, itemToFind))
-                {
-                    return index;
-                }
-                index++;
-            }
-            return -1;
-        }
-
-
-        public int GetZeroBasedInsertionIdForItemInActive(IName itemToFind)
-        {
-            if (itemToFind == null) return -1;
-            int currentIndex = FindIndexByReferenceInActive(itemToFind);
-            if (currentIndex == -1) return -1;
-
-            try
-            {
-                if (ActiveContainerType == ContainerType.Array && _containerArray != null)
-                {
-                    int[] order = _containerArray.GetInsertionOrder();
-                    if (currentIndex < order.Length && currentIndex < _containerArray.GetCount())
-                        return order[currentIndex];
-                }
-                else if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
-                {
-                    List<int> order = _containerList.GetInsertionOrder();
-                    if (currentIndex < order.Count && currentIndex < _containerList.GetCount())
-                        return order[currentIndex];
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error in GetZeroBasedInsertionIdForItemInActive for current index {currentIndex}: {ex.Message}");
-            }
-            return -1;
-        }
-
-
-        public IName? GetItemByCurrentZeroBasedIndexInActive(int zeroBasedIndex)
-        {
-            if (zeroBasedIndex < 0) return null;
-            var items = GetActiveItems();
-            int count = 0;
-            foreach (var item in items)
-            {
-                if (count == zeroBasedIndex) return item;
-                count++;
-            }
-            return null;
-        }
-
-
-        public void DemonstrateIndexers(DataFactory dataFactory)
-        {
-            Random random = new Random();
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"\n--- Demonstrating {ActiveContainerType} Container Indexer Usage ---");
-            Console.ResetColor();
-
-            if (IsActiveContainerEmpty(false))
-            {
-                Console.WriteLine("Container is empty, cannot demonstrate indexers.");
-                return;
-            }
-
-            int nextAvailableId = GetNextAvailableInsertionId();
-
-
-            if (nextAvailableId > 0)
-            {
-                List<int> currentValidInsertionIds = new List<int>();
-                if (ActiveContainerType == ContainerType.Array && _containerArray != null)
-                    currentValidInsertionIds = _containerArray.GetInsertionOrder().Take(_containerArray.GetCount()).ToList();
-                else if (ActiveContainerType == ContainerType.LinkedList && _containerList != null)
-                    currentValidInsertionIds = _containerList.GetInsertionOrder().Take(_containerList.GetCount()).ToList();
-
-
-                int demoInsertionId = -1;
-                if (currentValidInsertionIds.Any())
-                {
-                    demoInsertionId = currentValidInsertionIds[random.Next(currentValidInsertionIds.Count)];
-                }
-
-                if (demoInsertionId != -1)
-                {
-                    Console.WriteLine($"1. Accessing item by existing insertion ID [{demoInsertionId + 1}]:");
-                    try
-                    {
-                        IName? itemById = FindItemByZeroBasedInsertionId(demoInsertionId);
-                        if (itemById != null)
-                        {
-                            int currentIndex = FindIndexByReferenceInActive(itemById);
-                            string indexStr = currentIndex != -1 ? $"(Current Index: {currentIndex + 1})" : "";
-                            Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.WriteLine($"   Found {indexStr}: {itemById.ToString() ?? "N/A"}");
-                            Console.ResetColor();
-                        }
-                        else
-                        {
-                            Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine($"   Item with insertion ID {demoInsertionId + 1} not found (unexpectedly null).");
-                            Console.ResetColor();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        ConsoleUI.PrintErrorMessage($"   Error getting item by insertion ID {demoInsertionId + 1}: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("1. No valid insertion IDs found in current order to demonstrate get by ID.");
-                }
-            }
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.GetSortedByArrayPrice() ?? Enumerable.Empty<Product>();
             else
-            {
-                Console.WriteLine("1. No items added yet, cannot demonstrate insertion ID indexer for get.");
-            }
-
-
-
-            string? demoName = null;
-            var activeItemsList = GetActiveItems().ToList();
-            if (activeItemsList.Any())
-            {
-                var namedItems = activeItemsList.Where(it => it != null && !string.IsNullOrWhiteSpace(it.Name)).ToList();
-                if (namedItems.Any()) demoName = namedItems[random.Next(namedItems.Count)].Name;
-            }
-
-            Console.WriteLine($"\n2. Using string indexer for name \"{demoName ?? "N/A"}\":");
-            if (!string.IsNullOrWhiteSpace(demoName))
-            {
-                try
-                {
-                    var itemsByName = FindItemsByNameInActive(demoName).ToList();
-                    if (itemsByName.Any())
-                    {
-                        Console.ForegroundColor = ConsoleColor.Cyan;
-                        Console.WriteLine($"   Found {itemsByName.Count()} item(s):");
-                        foreach (var item in itemsByName)
-                        {
-                            int currentIndex = FindIndexByReferenceInActive(item!);
-                            string indexStr = currentIndex != -1 ? $"(Index: {currentIndex + 1})" : "";
-                            Console.WriteLine($"   - {indexStr} {item!.ToString() ?? "N/A"}");
-                        }
-                        Console.ResetColor();
-                    }
-                    else
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"   No items found for name '{demoName}'.");
-                        Console.ResetColor();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    ConsoleUI.PrintErrorMessage($"   Error getting item(s) by name '{demoName}': {ex.Message}");
-                }
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("   Could not find an item with a non-empty name in the sample to demonstrate.");
-                Console.ResetColor();
-            }
-
-
-
-            int validDemoIdToSet = -1;
-            var allInsertionIds = Enumerable.Range(0, nextAvailableId).ToList();
-            if (allInsertionIds.Any())
-            {
-
-                foreach (var idInOrder in GetActiveItems().Select(it => GetZeroBasedInsertionIdForItemInActive(it)).Where(id => id != -1).Distinct())
-                {
-                    if (FindItemByZeroBasedInsertionId(idInOrder) != null)
-                    {
-                        validDemoIdToSet = idInOrder;
-                        break;
-                    }
-                }
-                if (validDemoIdToSet == -1 && allInsertionIds.Any())
-                {
-                    validDemoIdToSet = allInsertionIds[random.Next(allInsertionIds.Count)];
-                }
-            }
-
-
-            if (validDemoIdToSet != -1)
-            {
-                Console.WriteLine($"\n3. Attempting to change item with insertion ID [{validDemoIdToSet + 1}] using property modification:");
-                IName? itemToModify = FindItemByZeroBasedInsertionId(validDemoIdToSet);
-                if (itemToModify != null)
-                {
-                    int currentIndex = FindIndexByReferenceInActive(itemToModify);
-                    string indexStr = currentIndex != -1 ? $"(Current Index: {currentIndex + 1})" : "";
-                    Console.ForegroundColor = ConsoleColor.Magenta;
-                    Console.WriteLine($"   Original Item {indexStr}: '{itemToModify.ToString() ?? "N/A"}'");
-                    Console.ResetColor();
-                    try
-                    {
-                        string newName = $"ChangedViaIndexer-{validDemoIdToSet + 1}";
-                        Console.WriteLine($"   Attempting to set Name to '{newName}'...");
-
-
-
-                        itemToModify.GetType().GetProperty("Name")?.SetValue(itemToModify, newName);
-
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"   Property 'Name' potentially updated.");
-
-                        IName? changedItem = FindItemByZeroBasedInsertionId(validDemoIdToSet);
-                        int changedIndex = changedItem != null ? FindIndexByReferenceInActive(changedItem) : -1;
-                        string changedIndexStr = changedIndex != -1 ? $"(Current Index: {changedIndex + 1})" : "";
-
-                        Console.ForegroundColor = ConsoleColor.Cyan;
-                        Console.WriteLine($"   Current value {changedIndexStr}: {changedItem?.ToString() ?? "Not Found!"}");
-                        Console.ResetColor();
-                    }
-                    catch (TargetInvocationException tie) { ConsoleUI.PrintErrorMessage($"   Error modifying property: {tie.InnerException?.Message ?? tie.Message}"); }
-                    catch (Exception ex) { ConsoleUI.PrintErrorMessage($"   Error modifying property: {ex.Message}"); }
-                }
-                else { Console.WriteLine($"   Could not retrieve item with insertion ID {validDemoIdToSet + 1} for modification demonstration."); }
-            }
-            else
-            {
-                Console.WriteLine("\n3. Cannot demonstrate modification: No suitable item found with a valid insertion ID.");
-            }
-
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"--- End {ActiveContainerType} Indexer Demonstration ---");
-            Console.ResetColor();
+                return _containerList?.GetSortedByArrayPrice() ?? Enumerable.Empty<Product>();
         }
 
+        public IEnumerable<Product> GetSortedArrayByNameEnumerable() 
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.GetSortedArrayByName() ?? Enumerable.Empty<Product>();
+            else
+                return _containerList?.GetSortedArrayByName() ?? Enumerable.Empty<Product>();
+        }
+
+        public IEnumerable<Product> GetByNamePrefix(string prefix)
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.GetByNamePrefix(prefix) ?? Enumerable.Empty<Product>();
+            else
+                return _containerList?.GetByNamePrefix(prefix) ?? Enumerable.Empty<Product>();
+        }
+
+        public Product? FindFirst(Predicate<Product> match) 
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.Find(match);
+            else
+                return _containerList?.Find(match);
+        }
+
+        public IEnumerable<Product> FindAll(Predicate<Product> match) 
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.FindAll(match) ?? Enumerable.Empty<Product>();
+            else
+                return _containerList?.FindAll(match) ?? Enumerable.Empty<Product>();
+        }
+
+        public decimal GetTotalPrice()
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.TotalPrice ?? 0m;
+            else
+                return _containerList?.TotalPrice ?? 0m;
+        }
+
+        public int GetNextInsertionId()
+        {
+            if (ActiveContainerType == ContainerType.Array)
+                return _containerArray?.InsertionId ?? 0;
+            else
+                return _containerList?.InsertionId ?? 0;
+        }
     }
 }

@@ -2,7 +2,7 @@
 
 namespace IRT.Classes
 {
-    class Hotel : RealEstateInvestment, IName<Hotel>, ICustomSerializable
+    public class Hotel : RealEstateInvestment, ICustomSerializable
     {
         public int Rooms { get; set; }
         public int StarRating { get; set; }
