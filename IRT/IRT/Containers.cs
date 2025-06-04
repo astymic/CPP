@@ -134,8 +134,10 @@ namespace IRT
         public IEnumerable<T> GetArrayWithSublineInName(string subline)
         {
             for (int i = 0; i < count; i++)
+            { 
                 if (((IName<T>)items[i]).Name.Contains(subline))
                     yield return items[i];
+            }
         }
 
         public IEnumerable<T> GetSortedByArrayPrice()
@@ -205,7 +207,7 @@ namespace IRT
 
                 var method = type.GetMethod("Deserialize", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
                 if (method == null)
-                    throw new InvalidOperationException($"No static Deserialize method in {typeName}");
+                    throw new InvalidOperationException($"No Deserialize method in {typeName}");
 
                 var obj = (T)method.Invoke(null, new object[] { reader });
                 container.Add(obj);
@@ -218,8 +220,10 @@ namespace IRT
             get
             {
                 for (int i = 0; i < count; i++)
+                {
                     if (insertionOrder[i] == id)
                         return items[i];
+                }
                 return default;
             }
             set
@@ -249,8 +253,10 @@ namespace IRT
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
             for (int i = 0; i < count; i++)
+            { 
                 if (match(items[i]))
                     return items[i];
+            }
             return default;
         }
 
@@ -258,8 +264,10 @@ namespace IRT
         {
             if (match == null) throw new ArgumentNullException(nameof(match));
             for (int i = 0; i < count; i++)
+            { 
                 if (match(items[i]))
                     yield return items[i];
+            }
         }
 
         public IEnumerable<T> GetByNamePrefix(string prefix)
@@ -406,7 +414,12 @@ namespace IRT
         {
             T[] arr = new T[count];
             Node cur = head;
-            for (int i = 0; i < count; i++) { arr[i] = cur.Data; cur = cur.Next; }
+            for (int i = 0; i < count; i++) 
+            { 
+                arr[i] = cur.Data; 
+                cur = cur.Next; 
+            }
+
             int iRev = 0, jRev = count - 1;
             while (iRev < jRev)
             {
@@ -414,9 +427,11 @@ namespace IRT
                 iRev++;
                 jRev--;
             }
+
             for (int i = 0; i < arr.Length; i++)
                 yield return arr[i];
         }
+
         public IEnumerable<T> GetArrayWithSublineInName(string subline)
         {
             Node cur = head;
@@ -427,6 +442,7 @@ namespace IRT
                 cur = cur.Next;
             }
         }
+
         public IEnumerable<T> GetSortedByArrayPrice()
         {
             T[] arr = new T[count];
@@ -451,6 +467,7 @@ namespace IRT
             for (int i = 0; i < arr.Length; i++)
                 yield return arr[i];
         }
+
         public IEnumerable<T> GetSortedArrayByName()
         {
             T[] arr = new T[count];
